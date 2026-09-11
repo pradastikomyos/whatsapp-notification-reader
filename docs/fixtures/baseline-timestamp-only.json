@@ -1,0 +1,41 @@
+{
+  "syntheticDataNotice": "SYNTHETIC FIXTURE. All names, identifiers, and message text below are fabricated for testing. No real personal data.",
+  "fixtureId": "baseline-timestamp-only",
+  "caseDescription": "Plain baseline direct message with no unusual content; used as the control case for timestamp-sensitive dedup/staleness tests, where only the post timestamp is expected to vary across otherwise-identical captures of this scenario.",
+  "waVariant": "consumer",
+  "localeUi": "n/a",
+  "expectedParserOutcome": "MessagingStyleMessages",
+  "notes": "When constructing staleness or duplicate-window test variants from this fixture, vary only postTimeMillis and messagingStyle.messages[].timestampMillis; keep every other field identical so the timestamp remains the sole controlled variable.",
+  "captures": [
+    {
+      "captureLabel": "initial",
+      "packageName": "com.whatsapp",
+      "notificationKey": "0|com.whatsapp|20013|null|10133713",
+      "notificationId": 20013,
+      "postTimeMillis": 1737101300000,
+      "groupKey": "os-bundle::dedi-kurniawan",
+      "title": "Dedi Kurniawan",
+      "text": "Sampai jumpa besok",
+      "bigText": "Sampai jumpa besok",
+      "textLines": [],
+      "subText": null,
+      "summaryText": null,
+      "category": "msg",
+      "isGroupSummary": false,
+      "conversationTitle": "Dedi Kurniawan",
+      "shortcutId": "shortcut-dedi-kurniawan",
+      "messagingStyle": {
+        "userDisplayName": "Saya",
+        "isGroupConversation": false,
+        "conversationTitle": "Dedi Kurniawan",
+        "messages": [
+          {
+            "text": "Sampai jumpa besok",
+            "timestampMillis": 1737101300000,
+            "sender": { "key": "person-dedi-kurniawan", "name": "Dedi Kurniawan", "isBot": false }
+          }
+        ]
+      }
+    }
+  ]
+}

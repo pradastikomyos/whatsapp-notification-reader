@@ -1,0 +1,30 @@
+{
+  "syntheticDataNotice": "SYNTHETIC FIXTURE. All names, identifiers, and message text below are fabricated for testing. No real personal data.",
+  "fixtureId": "notification-summary",
+  "caseDescription": "Android OS-level notification-group summary entry representing an accumulated-unread banner rather than an individual message.",
+  "waVariant": "consumer",
+  "localeUi": "id-UI",
+  "expectedParserOutcome": "Summary",
+  "notes": "isGroupSummary=true marks this as the OS-level notification-group summary row; it must be classified as Summary and skipped for speech, independent of any WhatsApp chat-type grouping. groupKey matches the bundled child notifications' illustrative group key.",
+  "captures": [
+    {
+      "captureLabel": "initial",
+      "packageName": "com.whatsapp",
+      "notificationKey": "0|com.whatsapp|20005|null|10133705",
+      "notificationId": 20005,
+      "postTimeMillis": 1737100800000,
+      "groupKey": "os-bundle::summary-root",
+      "title": "WhatsApp",
+      "text": "3 pesan baru dari 2 percakapan",
+      "bigText": null,
+      "textLines": [],
+      "subText": null,
+      "summaryText": "3 pesan baru dari 2 percakapan",
+      "category": "msg",
+      "isGroupSummary": true,
+      "conversationTitle": null,
+      "shortcutId": null,
+      "messagingStyle": null
+    }
+  ]
+}

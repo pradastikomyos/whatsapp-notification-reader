@@ -1,0 +1,41 @@
+{
+  "syntheticDataNotice": "SYNTHETIC FIXTURE. All names, identifiers, and message text below are fabricated for testing. No real personal data.",
+  "fixtureId": "group-message",
+  "caseDescription": "WhatsApp consumer group-chat message. Legacy text carries a colon-prefixed sender name, but MessagingStyle carries the clean per-message text and structured sender; the parser must prefer MessagingStyle (tier 1) and never need to interpret the legacy colon.",
+  "waVariant": "consumer",
+  "localeUi": "n/a",
+  "expectedParserOutcome": "MessagingStyleMessages",
+  "notes": "groupKey is an illustrative OS-level bundling placeholder, unrelated to WhatsApp chat type. This fixture is a genuine group chat, contrasted with direct-message-with-colon.json which has a colon but is NOT a group.",
+  "captures": [
+    {
+      "captureLabel": "initial",
+      "packageName": "com.whatsapp",
+      "notificationKey": "0|com.whatsapp|20002|null|10133702",
+      "notificationId": 20002,
+      "postTimeMillis": 1737100260000,
+      "groupKey": "os-bundle::karang-taruna-rt-05",
+      "title": "Karang Taruna RT 05",
+      "text": "Budi Santoso: Oke, saya siap kumpul jam 7",
+      "bigText": "Budi Santoso: Oke, saya siap kumpul jam 7",
+      "textLines": ["Budi Santoso: Oke, saya siap kumpul jam 7"],
+      "subText": "Karang Taruna RT 05",
+      "summaryText": null,
+      "category": "msg",
+      "isGroupSummary": false,
+      "conversationTitle": "Karang Taruna RT 05",
+      "shortcutId": "shortcut-karang-taruna-rt-05",
+      "messagingStyle": {
+        "userDisplayName": "Saya",
+        "isGroupConversation": true,
+        "conversationTitle": "Karang Taruna RT 05",
+        "messages": [
+          {
+            "text": "Oke, saya siap kumpul jam 7",
+            "timestampMillis": 1737100260000,
+            "sender": { "key": "person-budi-santoso", "name": "Budi Santoso", "isBot": false }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">RideNotify</string>
+    <string name="notification_listener_name">RideNotify notification reader</string>
+</resources>

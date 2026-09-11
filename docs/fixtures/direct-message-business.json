@@ -1,0 +1,41 @@
+{
+  "syntheticDataNotice": "SYNTHETIC FIXTURE. All names, identifiers, and message text below are fabricated for testing. No real personal data.",
+  "fixtureId": "direct-message-business",
+  "caseDescription": "Direct 1:1 message from a WhatsApp Business account notification.",
+  "waVariant": "business",
+  "localeUi": "n/a",
+  "expectedParserOutcome": "MessagingStyleMessages",
+  "notes": "Order number '#SN-1029' is fabricated and does not reference any real order or business.",
+  "captures": [
+    {
+      "captureLabel": "initial",
+      "packageName": "com.whatsapp.w4b",
+      "notificationKey": "0|com.whatsapp.w4b|20003|null|10133703",
+      "notificationId": 20003,
+      "postTimeMillis": 1737100320000,
+      "groupKey": "os-bundle::toko-maju-jaya",
+      "title": "Toko Maju Jaya",
+      "text": "Pesanan Anda #SN-1029 sudah dikemas, terima kasih!",
+      "bigText": "Pesanan Anda #SN-1029 sudah dikemas, terima kasih!",
+      "textLines": [],
+      "subText": null,
+      "summaryText": null,
+      "category": "msg",
+      "isGroupSummary": false,
+      "conversationTitle": "Toko Maju Jaya",
+      "shortcutId": "shortcut-toko-maju-jaya",
+      "messagingStyle": {
+        "userDisplayName": "Saya",
+        "isGroupConversation": false,
+        "conversationTitle": "Toko Maju Jaya",
+        "messages": [
+          {
+            "text": "Pesanan Anda #SN-1029 sudah dikemas, terima kasih!",
+            "timestampMillis": 1737100320000,
+            "sender": { "key": "person-toko-maju-jaya", "name": "Toko Maju Jaya", "isBot": false }
+          }
+        ]
+      }
+    }
+  ]
+}

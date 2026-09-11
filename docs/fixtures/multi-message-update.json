@@ -1,0 +1,76 @@
+{
+  "syntheticDataNotice": "SYNTHETIC FIXTURE. All names, identifiers, and message text below are fabricated for testing. No real personal data.",
+  "fixtureId": "multi-message-update",
+  "caseDescription": "Same notification identity updated in place after a new message arrives in an already-notified conversation (bundled update).",
+  "waVariant": "consumer",
+  "localeUi": "n/a",
+  "expectedParserOutcome": "MessagingStyleMessages",
+  "notes": "captures[0] ('initial') and captures[1] ('update-1') share the same notificationKey/notificationId, modeling Android's in-place notification update. The dedup/parser layer must treat 'update-1' as containing exactly one new message relative to 'initial', not two.",
+  "captures": [
+    {
+      "captureLabel": "initial",
+      "packageName": "com.whatsapp",
+      "notificationKey": "0|com.whatsapp|20006|null|10133706",
+      "notificationId": 20006,
+      "postTimeMillis": 1737100900000,
+      "groupKey": "os-bundle::maya-putri",
+      "title": "Maya Putri",
+      "text": "Nanti aku kabari ya",
+      "bigText": "Nanti aku kabari ya",
+      "textLines": ["Nanti aku kabari ya"],
+      "subText": null,
+      "summaryText": null,
+      "category": "msg",
+      "isGroupSummary": false,
+      "conversationTitle": "Maya Putri",
+      "shortcutId": "shortcut-maya-putri",
+      "messagingStyle": {
+        "userDisplayName": "Saya",
+        "isGroupConversation": false,
+        "conversationTitle": "Maya Putri",
+        "messages": [
+          {
+            "text": "Nanti aku kabari ya",
+            "timestampMillis": 1737100900000,
+            "sender": { "key": "person-maya-putri", "name": "Maya Putri", "isBot": false }
+          }
+        ]
+      }
+    },
+    {
+      "captureLabel": "update-1",
+      "packageName": "com.whatsapp",
+      "notificationKey": "0|com.whatsapp|20006|null|10133706",
+      "notificationId": 20006,
+      "postTimeMillis": 1737100950000,
+      "groupKey": "os-bundle::maya-putri",
+      "title": "Maya Putri",
+      "text": "Aku sudah di depan ya",
+      "bigText": "Nanti aku kabari ya\nAku sudah di depan ya",
+      "textLines": ["Nanti aku kabari ya", "Aku sudah di depan ya"],
+      "subText": null,
+      "summaryText": null,
+      "category": "msg",
+      "isGroupSummary": false,
+      "conversationTitle": "Maya Putri",
+      "shortcutId": "shortcut-maya-putri",
+      "messagingStyle": {
+        "userDisplayName": "Saya",
+        "isGroupConversation": false,
+        "conversationTitle": "Maya Putri",
+        "messages": [
+          {
+            "text": "Nanti aku kabari ya",
+            "timestampMillis": 1737100900000,
+            "sender": { "key": "person-maya-putri", "name": "Maya Putri", "isBot": false }
+          },
+          {
+            "text": "Aku sudah di depan ya",
+            "timestampMillis": 1737100950000,
+            "sender": { "key": "person-maya-putri", "name": "Maya Putri", "isBot": false }
+          }
+        ]
+      }
+    }
+  ]
+}

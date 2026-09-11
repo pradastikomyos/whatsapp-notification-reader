@@ -1,0 +1,42 @@
+--------- beginning of main
+09-11 06:56:55.779 17845 17845 I SpikeAudioExperiment: 06:56:55.778 notification-observed package=com.whatsapp mode=NO_FGS
+09-11 06:56:55.787 17845 17845 I SpikeAudioExperiment: 06:56:55.786 trial-start trigger=listener-callback mode=NO_FGS
+09-11 06:56:55.798 17845 17845 I SpikeAudioExperiment: 06:56:55.797 audio-focus-request result=1 granted=true mode=NO_FGS
+09-11 06:56:55.816 17845 17845 I SpikeAudioExperiment: 06:56:55.815 notification-observed package=com.whatsapp mode=NO_FGS
+09-11 06:56:55.817 17845 17845 I SpikeAudioExperiment: 06:56:55.817 trial-start trigger=listener-callback mode=NO_FGS
+09-11 06:56:55.822 17845 17845 I SpikeAudioExperiment: 06:56:55.821 audio-focus-request result=1 granted=true mode=NO_FGS
+09-11 06:56:55.827 17845 17845 I SpikeAudioExperiment: 06:56:55.826 audio-focus-change=-2 mode=NO_FGS
+09-11 06:56:56.383 17845 17845 I SpikeAudioExperiment: 06:56:56.382 tts-language-availability=1 mode=NO_FGS
+09-11 06:56:56.496 17845 17845 I SpikeAudioExperiment: 06:56:56.495 tts-speak-call-result=0 mode=NO_FGS
+09-11 06:56:56.499 17845 17845 I SpikeAudioExperiment: 06:56:56.498 tts-language-availability=1 mode=NO_FGS
+09-11 06:56:56.650 17845 17845 I SpikeAudioExperiment: 06:56:56.650 tts-speak-call-result=0 mode=NO_FGS
+09-11 06:56:57.292 17845 17859 I SpikeAudioExperiment: 06:56:57.291 utterance-start id=f5bc8dd0-340b-42ad-81bd-337a5071bfcb mode=NO_FGS
+09-11 06:56:59.974 17845 18207 I SpikeAudioExperiment: 06:56:59.972 utterance-start id=fda70d2a-a7a2-4fe5-8598-a2644bc582c2 mode=NO_FGS
+09-11 06:56:59.981 17845 18201 I SpikeAudioExperiment: 06:56:59.978 utterance-outcome=done mode=NO_FGS
+09-11 06:56:59.984 17845 18201 I SpikeAudioExperiment: 06:56:59.983 trial-end durationMs=4196 mode=NO_FGS
+09-11 06:56:59.985 17845 18201 I SpikeAudioExperiment: 06:56:59.985 no-fgs-trial-complete
+09-11 06:57:02.608 17845 17859 I SpikeAudioExperiment: 06:57:02.606 utterance-outcome=done mode=NO_FGS
+09-11 06:57:02.610 17845 17859 I SpikeAudioExperiment: 06:57:02.609 trial-end durationMs=6792 mode=NO_FGS
+09-11 06:57:02.611 17845 17859 I SpikeAudioExperiment: 06:57:02.610 no-fgs-trial-complete
+09-11 06:59:32.179 17845 17845 I SpikeAudioExperiment: 06:59:32.178 mode-selected=WITH_FGS
+09-11 07:00:56.439 17845 17845 I SpikeAudioExperiment: 07:00:56.437 notification-observed package=com.whatsapp mode=WITH_FGS
+09-11 07:00:56.455 17845 17845 I SpikeAudioExperiment: 07:00:56.453 notification-observed package=com.whatsapp mode=WITH_FGS
+09-11 07:00:56.487 17845 17845 I SpikeAudioExperiment: 07:00:56.486 fgs-start-succeeded mode=WITH_FGS
+09-11 07:00:56.489 17845 17845 I SpikeAudioExperiment: 07:00:56.489 trial-start trigger=listener-callback mode=WITH_FGS
+09-11 07:00:56.494 17845 17845 I SpikeAudioExperiment: 07:00:56.494 audio-focus-request result=1 granted=true mode=WITH_FGS
+09-11 07:00:56.503 17845 17845 I SpikeAudioExperiment: 07:00:56.502 fgs-start-succeeded mode=WITH_FGS
+09-11 07:00:56.504 17845 17845 I SpikeAudioExperiment: 07:00:56.503 trial-start trigger=listener-callback mode=WITH_FGS
+09-11 07:00:56.507 17845 17845 I SpikeAudioExperiment: 07:00:56.507 audio-focus-request result=1 granted=true mode=WITH_FGS
+09-11 07:00:56.513 17845 17845 I SpikeAudioExperiment: 07:00:56.512 audio-focus-change=-2 mode=WITH_FGS
+09-11 07:00:56.533 17845 17845 I SpikeAudioExperiment: 07:00:56.532 tts-language-availability=1 mode=WITH_FGS
+09-11 07:00:56.670 17845 17845 I SpikeAudioExperiment: 07:00:56.670 tts-speak-call-result=0 mode=WITH_FGS
+09-11 07:00:56.672 17845 17845 I SpikeAudioExperiment: 07:00:56.672 tts-language-availability=1 mode=WITH_FGS
+09-11 07:00:56.680 17845 17859 I SpikeAudioExperiment: 07:00:56.679 utterance-start id=6c7577e2-b6f1-45a4-98e8-58c986a87f17 mode=WITH_FGS
+09-11 07:00:56.737 17845 17845 I SpikeAudioExperiment: 07:00:56.737 tts-speak-call-result=0 mode=WITH_FGS
+09-11 07:00:59.303 17845 17859 I SpikeAudioExperiment: 07:00:59.300 utterance-start id=eeab0f24-d89f-482e-901e-6ae590c2dcba mode=WITH_FGS
+09-11 07:00:59.309 17845 17860 I SpikeAudioExperiment: 07:00:59.308 utterance-outcome=done mode=WITH_FGS
+09-11 07:00:59.312 17845 17860 I SpikeAudioExperiment: 07:00:59.310 trial-end durationMs=2821 mode=WITH_FGS
+09-11 07:00:59.315 17845 17860 I SpikeAudioExperiment: 07:00:59.313 fgs-stop-on-drain mode=WITH_FGS
+09-11 07:01:01.938 17845 17860 I SpikeAudioExperiment: 07:01:01.936 utterance-outcome=done mode=WITH_FGS
+09-11 07:01:01.941 17845 17860 I SpikeAudioExperiment: 07:01:01.940 trial-end durationMs=5437 mode=WITH_FGS
+09-11 07:01:01.942 17845 17860 I SpikeAudioExperiment: 07:01:01.942 fgs-stop-on-drain mode=WITH_FGS

@@ -1,0 +1,41 @@
+{
+  "syntheticDataNotice": "SYNTHETIC FIXTURE. All names, identifiers, and message text below are fabricated for testing. No real personal data.",
+  "fixtureId": "message-with-url",
+  "caseDescription": "Direct message body containing a URL, verifying the parser/speech formatter does not misinterpret link syntax as structural metadata.",
+  "waVariant": "consumer",
+  "localeUi": "n/a",
+  "expectedParserOutcome": "MessagingStyleMessages",
+  "notes": "The domain contoh-sintetik.test uses the .test TLD, reserved for testing use by RFC 2606, and does not resolve to any real service.",
+  "captures": [
+    {
+      "captureLabel": "initial",
+      "packageName": "com.whatsapp",
+      "notificationKey": "0|com.whatsapp|20011|null|10133711",
+      "notificationId": 20011,
+      "postTimeMillis": 1737101100000,
+      "groupKey": "os-bundle::wulan-sari",
+      "title": "Wulan Sari",
+      "text": "Cek info promo di https://contoh-sintetik.test/promo ya!",
+      "bigText": "Cek info promo di https://contoh-sintetik.test/promo ya!",
+      "textLines": [],
+      "subText": null,
+      "summaryText": null,
+      "category": "msg",
+      "isGroupSummary": false,
+      "conversationTitle": "Wulan Sari",
+      "shortcutId": "shortcut-wulan-sari",
+      "messagingStyle": {
+        "userDisplayName": "Saya",
+        "isGroupConversation": false,
+        "conversationTitle": "Wulan Sari",
+        "messages": [
+          {
+            "text": "Cek info promo di https://contoh-sintetik.test/promo ya!",
+            "timestampMillis": 1737101100000,
+            "sender": { "key": "person-wulan-sari", "name": "Wulan Sari", "isBot": false }
+          }
+        ]
+      }
+    }
+  ]
+}

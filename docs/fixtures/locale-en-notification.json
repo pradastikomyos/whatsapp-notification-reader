@@ -1,0 +1,41 @@
+{
+  "syntheticDataNotice": "SYNTHETIC FIXTURE. All names, identifiers, and message text below are fabricated for testing. No real personal data.",
+  "fixtureId": "locale-en-notification",
+  "caseDescription": "Equivalent scenario to locale-id-notification.json: the same WhatsApp-generated attachment placeholder string rendered in an English device/app UI locale.",
+  "waVariant": "consumer",
+  "localeUi": "en-UI",
+  "expectedParserOutcome": "Attachment",
+  "notes": "Pairs with locale-id-notification.json using the same shortcutId/conversationTitle to represent literally the same chat scenario. Only the WhatsApp-generated attachment placeholder string ('Photo' vs 'Foto') differs; this is WhatsApp's own UI-locale-dependent string, not user-authored content. Any locale-specific phrase matching in the legacy fallback tier must recognize both variants and must remain a secondary signal only, per ADR-003, never the primary classifier.",
+  "captures": [
+    {
+      "captureLabel": "initial",
+      "packageName": "com.whatsapp",
+      "notificationKey": "0|com.whatsapp|20016|null|10133716",
+      "notificationId": 20016,
+      "postTimeMillis": 1737101500000,
+      "groupKey": "os-bundle::dewi-lestari",
+      "title": "Dewi Lestari",
+      "text": "Photo",
+      "bigText": "Photo",
+      "textLines": [],
+      "subText": null,
+      "summaryText": null,
+      "category": "msg",
+      "isGroupSummary": false,
+      "conversationTitle": "Dewi Lestari",
+      "shortcutId": "shortcut-dewi-lestari",
+      "messagingStyle": {
+        "userDisplayName": "Me",
+        "isGroupConversation": false,
+        "conversationTitle": "Dewi Lestari",
+        "messages": [
+          {
+            "text": "Photo",
+            "timestampMillis": 1737101500000,
+            "sender": { "key": "person-dewi-lestari", "name": "Dewi Lestari", "isBot": false }
+          }
+        ]
+      }
+    }
+  ]
+}
