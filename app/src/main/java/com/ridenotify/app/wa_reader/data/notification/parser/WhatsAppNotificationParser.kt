@@ -19,6 +19,7 @@ class WhatsAppNotificationParser : NotificationParser {
         }
         if (snapshot.isGroupSummary) return ParsedNotification.Summary
         if (snapshot.category.equals(CALL_CATEGORY, ignoreCase = true)) return ParsedNotification.Call
+        if (isGeneratedSummary(snapshot)) return ParsedNotification.Summary
 
         val style = snapshot.messagingStyle
         if (style != null && style.messages.isNotEmpty()) {
@@ -42,8 +43,11 @@ class WhatsAppNotificationParser : NotificationParser {
             val body = preferredBody(snapshot)
                 ?: return ParsedNotification.Unsupported(UnsupportedReason.EMPTY_CONTENT)
             if (isAttachmentPlaceholder(body)) return ParsedNotification.Attachment
-            val isGroup = style?.isGroupConversation
-                ?: (distinctLegacySenders(snapshot.textLines).size >= 2)
+            val legacyGroupEvidence = distinctLegacySenders(snapshot.textLines).size >= 2
+            if (style == null && !legacyGroupEvidence) {
+                return ParsedNotification.Unsupported(UnsupportedReason.UNRECOGNIZED_NOTIFICATION)
+            }
+            val isGroup = style?.isGroupConversation ?: true
             return messagesResult(
                 snapshot = snapshot,
                 source = ParseSource.CONVERSATION_METADATA,
@@ -81,7 +85,7 @@ class WhatsAppNotificationParser : NotificationParser {
         val title = snapshot.messagingStyle?.conversationTitle?.trim()?.takeIf(String::isNotEmpty)
             ?: snapshot.conversationTitle?.trim()?.takeIf(String::isNotEmpty)
             ?: snapshot.title?.trim()?.takeIf(String::isNotEmpty)
-        val id = conversationId(snapshot, isGroup, title, sender?.key) ?: return null
+        val id = conversationId(snapshot, isGroup, title, sender?.key.takeUnless { isGroup }) ?: return null
         return ParsedMessage(
             conversationId = id,
             conversationType = if (isGroup) ConversationType.GROUP else ConversationType.DIRECT,
@@ -168,10 +172,15 @@ class WhatsAppNotificationParser : NotificationParser {
     private fun isAttachmentPlaceholder(value: String): Boolean =
         value.trim().lowercase(Locale.ROOT) in ATTACHMENT_PLACEHOLDERS
 
+    private fun isGeneratedSummary(snapshot: NotificationSnapshot): Boolean =
+        snapshot.title?.trim().equals(WHATSAPP_TITLE, ignoreCase = true) &&
+            snapshot.text?.trim()?.lowercase(Locale.ROOT)?.matches(SUMMARY_PATTERN) == true
+
     private companion object {
         val ALLOWED_PACKAGES = setOf("com.whatsapp", "com.whatsapp.w4b")
         val ATTACHMENT_PLACEHOLDERS = setOf("photo", "foto", "video", "document", "dokumen")
         val REDACTION_PLACEHOLDERS = setOf("new message", "pesan baru")
+        val SUMMARY_PATTERN = Regex("\\d+ (new messages|pesan baru)")
         val WHITESPACE = Regex("\\s+")
         val LEGACY_SENDER = Regex("[\\p{L}\\p{M}\\p{N} ._+'’()\\-]{1,80}")
         const val CALL_CATEGORY = "call"

@@ -52,10 +52,10 @@ class InMemoryConversationRepository : ConversationRepository {
                 collisionCount = old.collisionCount + 1,
             )
         } else {
-            old.copy(
+            if (observation.observedAtMillis < old.lastSeenAtMillis) old else old.copy(
                 displayTitle = displayTitle,
                 shortcutId = observation.shortcutId?.trim()?.takeIf(String::isNotEmpty),
-                lastSeenAtMillis = maxOf(old.lastSeenAtMillis, observation.observedAtMillis),
+                lastSeenAtMillis = observation.observedAtMillis,
             )
         }
         rows[id] = updated
@@ -80,6 +80,9 @@ class InMemoryConversationRepository : ConversationRepository {
     }
 
     private fun publish() {
-        state.value = rows.values.sortedByDescending(ObservedConversation::lastSeenAtMillis)
+        state.value = rows.values.sortedWith(
+            compareByDescending<ObservedConversation> { it.lastSeenAtMillis }
+                .thenBy { it.conversationId.value },
+        )
     }
 }

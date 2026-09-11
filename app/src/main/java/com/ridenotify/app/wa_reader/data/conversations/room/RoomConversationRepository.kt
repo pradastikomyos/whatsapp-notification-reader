@@ -35,9 +35,13 @@ class RoomConversationRepository(
             ?.trim()
             ?.takeIf(String::isNotEmpty)
             ?.sha256()
+        val knownEvidence = oldEntity?.collisionEvidenceHash
+            ?.split(EVIDENCE_SEPARATOR)
+            ?.filter(String::isNotEmpty)
+            ?.toSet()
+            .orEmpty()
         val conflicting = observation.shortcutId.isNullOrBlank() &&
-            evidenceHash != null && oldEntity?.collisionEvidenceHash != null &&
-            evidenceHash != oldEntity.collisionEvidenceHash
+            evidenceHash != null && knownEvidence.isNotEmpty() && evidenceHash !in knownEvidence
 
         val updated = if (old == null) {
             ObservedConversation(
@@ -58,15 +62,16 @@ class RoomConversationRepository(
                 collisionCount = old.collisionCount + 1,
             )
         } else {
-            old.copy(
+            if (observation.observedAtMillis < old.lastSeenAtMillis) old else old.copy(
                 displayTitle = displayTitle,
                 shortcutId = observation.shortcutId?.trim()?.takeIf(String::isNotEmpty),
-                lastSeenAtMillis = maxOf(old.lastSeenAtMillis, observation.observedAtMillis),
+                lastSeenAtMillis = observation.observedAtMillis,
             )
         }
+        val updatedEvidence = (knownEvidence + listOfNotNull(evidenceHash)).joinToString(EVIDENCE_SEPARATOR)
         dao.upsert(
             updated.toEntity().copy(
-                collisionEvidenceHash = oldEntity?.collisionEvidenceHash ?: evidenceHash,
+                collisionEvidenceHash = updatedEvidence.takeIf(String::isNotEmpty),
             ),
         )
         updated
@@ -85,4 +90,8 @@ class RoomConversationRepository(
     private fun String.sha256(): String = MessageDigest.getInstance("SHA-256")
         .digest(toByteArray(Charsets.UTF_8))
         .joinToString("") { byte -> "%02x".format(byte) }
+
+    private companion object {
+        const val EVIDENCE_SEPARATOR = ","
+    }
 }

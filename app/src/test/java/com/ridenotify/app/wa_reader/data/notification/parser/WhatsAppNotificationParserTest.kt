@@ -78,11 +78,21 @@ class WhatsAppNotificationParserTest {
 
     @Test
     fun structuredMetadata_isUsedWhenMessageListIsAbsent() {
+        val emptyDirectStyle = MessagingStyleSnapshot("Me", false, "Sari", emptyList())
         val result = assertIs<ParsedNotification.Messages>(
-            parser.parse(snapshot(title = "Sari", text = "Halo", shortcutId = "chat-1")),
+            parser.parse(snapshot(title = "Sari", text = "Halo", shortcutId = "chat-1", style = emptyDirectStyle)),
         )
         assertEquals(ParseSource.CONVERSATION_METADATA, result.source)
         assertEquals("com.whatsapp::shortcut::chat-1", result.items.single().conversationId.value)
+    }
+
+    @Test
+    fun ambiguousConversationMetadata_failsClosed() {
+        val result = assertIs<ParsedNotification.Unsupported>(
+            parser.parse(snapshot(title = "Sari", text = "Halo", shortcutId = "chat-1")),
+        )
+
+        assertEquals(UnsupportedReason.UNRECOGNIZED_NOTIFICATION, result.reason)
     }
 
     @Test
@@ -112,6 +122,33 @@ class WhatsAppNotificationParserTest {
         )
 
         assertEquals(UnsupportedReason.UNRECOGNIZED_NOTIFICATION, result.reason)
+    }
+
+    @Test
+    fun groupWithoutShortcut_usesOneConversationIdentityAcrossSenders() {
+        val groupStyle = MessagingStyleSnapshot(
+            userDisplayName = "Me",
+            isGroupConversation = true,
+            conversationTitle = "Tim",
+            messages = listOf(
+                MessagingStyleMessageSnapshot("Satu", 98, SenderSnapshot("sender-a", "Sari", false)),
+                MessagingStyleMessageSnapshot("Dua", 99, SenderSnapshot("sender-b", "Budi", false)),
+            ),
+        )
+
+        val result = assertIs<ParsedNotification.Messages>(parser.parse(snapshot(style = groupStyle)))
+
+        assertEquals(1, result.items.map { it.conversationId }.distinct().size)
+        assertTrue(result.items.singleOrNull() == null)
+    }
+
+    @Test
+    fun generatedSummaryBanner_isNotParsedAsMessage() {
+        listOf("3 new messages", "3 pesan baru").forEach { banner ->
+            assertIs<ParsedNotification.Summary>(
+                parser.parse(snapshot(title = "WhatsApp", text = banner)),
+            )
+        }
     }
 
     @Test

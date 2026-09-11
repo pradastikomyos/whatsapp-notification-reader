@@ -103,6 +103,21 @@ class RoomConversationRepositoryTest {
         assertEquals(initial.displayTitle, collided.displayTitle)
         assertTrue(collided.collisionDetected)
         assertEquals(1, collided.collisionCount)
+
+        val repeated = repository.recordObserved(
+            observation(shortcutId = null, evidence = "fingerprint-b", observedAt = 40),
+        )!!
+        assertEquals(1, repeated.collisionCount)
+    }
+
+    @Test
+    fun `older observations do not regress current metadata`() = runTest {
+        val current = repository.recordObserved(observation(title = "Nama Baru", observedAt = 30))!!
+
+        val result = repository.recordObserved(observation(title = "Nama Lama", observedAt = 20))!!
+
+        assertEquals(current.displayTitle, result.displayTitle)
+        assertEquals(30, result.lastSeenAtMillis)
     }
 
     @Test

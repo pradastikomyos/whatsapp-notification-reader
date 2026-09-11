@@ -13,8 +13,8 @@ new change.
 
 - Phase 0, architecture decisions and evidence: **Passed**.
 - Phase 1, native Android foundation: **Passed locally**.
-- Phase 2, domain and data: **In progress**.
-- Current completed Phase 2 tasks: `P2-T01` through `P2-T05`, plus `P2-T07`.
+- Phase 2, domain and data: **Passed locally**.
+- Current completed Phase 2 tasks: `P2-T01` through `P2-T07` and `P2-R01`.
 - No production notification parsing, TTS, audio focus,
   foreground playback service, or finished product UI exists yet.
 - The app currently builds, installs, and opens as a native Compose foundation.
@@ -24,8 +24,7 @@ new change.
 - `P2-T03 Notification snapshot extraction` passed locally.
 - AndroidX Core is pinned to compatible stable version `1.17.0`; Core 1.18+
   requires the API 36.1 toolchain while this project remains on compileSdk 36.
-- Next implementation task is `P2-T06 Reading policy and formatter`; after it,
-  Phase 2 is ready for independent review (`P2-R01`).
+- Next implementation task is `P3-T01 Listener service`.
 - ADB now sees the Xiaomi Mi Mix 2S, but notification access must still be
   granted manually before Phase 3 end-to-end listener testing.
 
@@ -70,6 +69,8 @@ the production `app` module.
 `P2-T03` is complete and reviewed in `docs/reviews/P2-T03.md`.
 `P2-T04`, `P2-T05`, and `P2-T07` are complete and reviewed in their matching
 files under `docs/reviews/`.
+`P2-T06` and the Phase 2 gate are complete in `docs/reviews/P2-T06.md` and
+`docs/reviews/P2-R01.md`.
 
 Implemented pure Kotlin models:
 
@@ -107,6 +108,13 @@ Implemented parser, deduplication, and conversation catalogue:
   bodies are never stored or persisted.
 - Room persists group catalogue metadata only, with discovery and selection
   serialized and kept logically separate.
+
+Implemented reading policy and speech formatting:
+
+- Reader and riding gates have fixed precedence before private/group policy.
+- Redacted, unsupported, stale, and every explicit group mode fail closed.
+- Indonesian speech text is sanitized and bounded to 240 characters without
+  dropping all message content or splitting Unicode surrogate pairs.
 
 ## Current Architecture Decisions
 

@@ -98,6 +98,21 @@ class InMemoryConversationRepositoryTest {
     }
 
     @Test
+    fun `older observations do not regress current metadata`() = runTest {
+        val repository = InMemoryConversationRepository()
+        val current = repository.recordObserved(
+            observation(conversationTitle = "Nama Baru", observedAt = 30),
+        )!!
+
+        val result = repository.recordObserved(
+            observation(conversationTitle = "Nama Lama", observedAt = 20),
+        )!!
+
+        assertEquals(current.displayTitle, result.displayTitle)
+        assertEquals(30, result.lastSeenAtMillis)
+    }
+
+    @Test
     fun `rows have indefinite retention until full reset`() = runTest {
         val repository = InMemoryConversationRepository()
         repository.recordObserved(observation())
