@@ -136,6 +136,10 @@ picker. Persistence is scoped exactly to the fields below and nothing else:
 | `firstSeenAtMillis` / `lastSeenAtMillis` | Observation timestamps |
 | `selectionState` | User selection, meaningful only under `SELECTED_GROUPS_ONLY` |
 | `collisionDetected` | Boolean/counter per section 4 |
+| `collisionEvidenceHash` | SHA-256 hash of collision evidence; never raw sender data |
+
+Collision evidence is persisted only as a one-way SHA-256 hash so conflicting
+traffic remains detectable after process restart without retaining a sender set.
 
 **Never stored**: message text, message timestamps as a history log, sender
 lists beyond the single most-recently-observed display name/key already

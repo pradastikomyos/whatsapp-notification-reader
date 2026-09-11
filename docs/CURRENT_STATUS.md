@@ -14,11 +14,20 @@ new change.
 - Phase 0, architecture decisions and evidence: **Passed**.
 - Phase 1, native Android foundation: **Passed locally**.
 - Phase 2, domain and data: **In progress**.
-- Current completed Phase 2 tasks: `P2-T01 Domain models` and
-  `P2-T02 DataStore settings`.
+- Current completed Phase 2 tasks: `P2-T01` through `P2-T05`, plus `P2-T07`.
 - No production notification parsing, TTS, audio focus,
   foreground playback service, or finished product UI exists yet.
 - The app currently builds, installs, and opens as a native Compose foundation.
+
+## Active Work
+
+- `P2-T03 Notification snapshot extraction` passed locally.
+- AndroidX Core is pinned to compatible stable version `1.17.0`; Core 1.18+
+  requires the API 36.1 toolchain while this project remains on compileSdk 36.
+- Next implementation task is `P2-T06 Reading policy and formatter`; after it,
+  Phase 2 is ready for independent review (`P2-R01`).
+- ADB now sees the Xiaomi Mi Mix 2S, but notification access must still be
+  granted manually before Phase 3 end-to-end listener testing.
 
 ## Completed Work
 
@@ -58,6 +67,9 @@ the production `app` module.
 
 `P2-T01` is complete and reviewed in `docs/reviews/P2-T01.md`.
 `P2-T02` is complete and reviewed in `docs/reviews/P2-T02.md`.
+`P2-T03` is complete and reviewed in `docs/reviews/P2-T03.md`.
+`P2-T04`, `P2-T05`, and `P2-T07` are complete and reviewed in their matching
+files under `docs/reviews/`.
 
 Implemented pure Kotlin models:
 
@@ -78,6 +90,23 @@ Implemented DataStore settings:
 - Flutter legacy encoded doubles are decoded and range-checked.
 - Invalid persisted enums, rates, and blank conversation IDs fail to safe defaults.
 - Robolectric integration tests exercise real Preferences DataStore files.
+
+Implemented notification snapshot extraction:
+
+- Android `StatusBarNotification` and `Notification` data is copied immediately
+  into immutable domain snapshots.
+- Extras, OS grouping metadata, conversation metadata, and MessagingStyle
+  messages/senders/timestamps are covered by Robolectric tests.
+- Framework notification objects do not cross into downstream domain APIs.
+
+Implemented parser, deduplication, and conversation catalogue:
+
+- Ordered WhatsApp parser covers all 14 synthetic fixtures / 18 captures and
+  fails closed for unsupported packages and ambiguous notifications.
+- In-memory fingerprint deduplication is bounded and clock-driven; raw message
+  bodies are never stored or persisted.
+- Room persists group catalogue metadata only, with discovery and selection
+  serialized and kept logically separate.
 
 ## Current Architecture Decisions
 
