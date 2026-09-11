@@ -25,7 +25,8 @@ new change.
 - AndroidX Core is pinned to compatible stable version `1.17.0`; Core 1.18+
   requires the API 36.1 toolchain while this project remains on compileSdk 36.
 - `P3-T01 Listener service` is complete locally.
-- Next implementation task is `P3-T02 Pipeline orchestration`.
+- `P3-T02 Pipeline orchestration` is complete locally.
+- Next implementation task is `P3-T03 Listener recovery`.
 - ADB now sees the Xiaomi Mi Mix 2S, but notification access must still be
   granted manually before Phase 3 end-to-end listener testing.
 
@@ -186,10 +187,10 @@ Commands and results:
 
 ```text
 gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
-BUILD SUCCESSFUL - 53 tasks; 24 tests
+BUILD SUCCESSFUL - 55 tasks; 95 tests
 
 gradlew assembleRelease
-BUILD SUCCESSFUL - 49 tasks
+BUILD SUCCESSFUL - 51 tasks
 
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 Success

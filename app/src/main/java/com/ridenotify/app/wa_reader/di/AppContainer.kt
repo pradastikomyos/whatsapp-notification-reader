@@ -6,8 +6,15 @@ import com.ridenotify.app.wa_reader.data.settings.SettingsRepository
 import com.ridenotify.app.wa_reader.data.conversations.ConversationRepository
 import com.ridenotify.app.wa_reader.data.conversations.room.ConversationDatabase
 import com.ridenotify.app.wa_reader.data.conversations.room.RoomConversationRepository
+import com.ridenotify.app.wa_reader.data.notification.NotificationDeduplicator
+import com.ridenotify.app.wa_reader.data.notification.parser.NotificationParser
+import com.ridenotify.app.wa_reader.data.notification.parser.WhatsAppNotificationParser
 import com.ridenotify.app.wa_reader.listener.ListenerConnectionTracker
 import com.ridenotify.app.wa_reader.listener.SerializedNotificationIngress
+import com.ridenotify.app.wa_reader.pipeline.DefaultNotificationPipeline
+import com.ridenotify.app.wa_reader.pipeline.DiagnosticCorrelation
+import com.ridenotify.app.wa_reader.pipeline.NotificationPipeline
+import com.ridenotify.app.wa_reader.policy.ReadingPolicyEvaluator
 
 class AppContainer(context: Context) {
     val applicationContext: Context = context.applicationContext
@@ -27,4 +34,20 @@ class AppContainer(context: Context) {
 
     val listenerConnectionTracker = ListenerConnectionTracker()
     val notificationIngress = SerializedNotificationIngress()
+
+    val notificationDeduplicator by lazy { NotificationDeduplicator() }
+    val notificationParser: NotificationParser by lazy { WhatsAppNotificationParser() }
+    val readingPolicyEvaluator by lazy { ReadingPolicyEvaluator() }
+    val diagnosticCorrelation by lazy { DiagnosticCorrelation() }
+
+    val notificationPipeline: NotificationPipeline by lazy {
+        DefaultNotificationPipeline(
+            ingress = notificationIngress,
+            parser = notificationParser,
+            deduplicator = notificationDeduplicator,
+            settingsRepository = settingsRepository,
+            policyEvaluator = readingPolicyEvaluator,
+            correlation = diagnosticCorrelation,
+        )
+    }
 }
