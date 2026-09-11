@@ -14,8 +14,9 @@ new change.
 - Phase 0, architecture decisions and evidence: **Passed**.
 - Phase 1, native Android foundation: **Passed locally**.
 - Phase 2, domain and data: **In progress**.
-- Current completed Phase 2 task: `P2-T01 Domain models`.
-- No production notification parsing, settings persistence, TTS, audio focus,
+- Current completed Phase 2 tasks: `P2-T01 Domain models` and
+  `P2-T02 DataStore settings`.
+- No production notification parsing, TTS, audio focus,
   foreground playback service, or finished product UI exists yet.
 - The app currently builds, installs, and opens as a native Compose foundation.
 
@@ -56,6 +57,7 @@ the production `app` module.
 ### Phase 2
 
 `P2-T01` is complete and reviewed in `docs/reviews/P2-T01.md`.
+`P2-T02` is complete and reviewed in `docs/reviews/P2-T02.md`.
 
 Implemented pure Kotlin models:
 
@@ -67,6 +69,15 @@ Implemented pure Kotlin models:
 - Explicit `ReadingDecision` outcomes.
 - Bounded `SpeechRequest` model.
 - Domain invariant tests.
+
+Implemented DataStore settings:
+
+- DataStore is the settings source of truth and is wired through `AppContainer`.
+- First read or write automatically runs the one-time legacy migration.
+- Migration is concurrency-safe and follows the ADR-001 migrate/reset map.
+- Flutter legacy encoded doubles are decoded and range-checked.
+- Invalid persisted enums, rates, and blank conversation IDs fail to safe defaults.
+- Robolectric integration tests exercise real Preferences DataStore files.
 
 ## Current Architecture Decisions
 
@@ -136,8 +147,8 @@ Connected test device used:
 Commands and results:
 
 ```text
-gradlew testDebugUnitTest lintDebug assembleDebug
-BUILD SUCCESSFUL - 53 tasks
+gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
+BUILD SUCCESSFUL - 53 tasks; 24 tests
 
 gradlew assembleRelease
 BUILD SUCCESSFUL - 49 tasks
@@ -200,23 +211,20 @@ recreated by Gradle.
 
 ## Next Ready Tasks
 
-The following Phase 2 tasks are ready after `P2-T01`:
+The following Phase 2 tasks are ready after `P2-T02`:
 
-1. `P2-T02 DataStore settings`
-2. `P2-T03 Notification snapshot extraction`
-3. `P2-T05 Notification deduplication`
-4. `P2-T07 Conversation repository`
+1. `P2-T03 Notification snapshot extraction`
+2. `P2-T05 Notification deduplication`
+3. `P2-T07 Conversation repository`
 
 Recommended resume order without workers:
 
-1. Implement `P2-T02`, including the explicit Flutter SharedPreferences
-   migration map from ADR-001.
-2. Implement `P2-T03` with Robolectric-built Notification/MessagingStyle tests.
-3. Implement `P2-T05` as a pure bounded, time-aware cache.
-4. Implement `P2-T07` with Room for group metadata only.
-5. Implement `P2-T04` after the snapshot contract is stable.
-6. Implement `P2-T06` after parser outputs are stable.
-7. Run `P2-R01` before entering Phase 3.
+1. Implement `P2-T03` with Robolectric-built Notification/MessagingStyle tests.
+2. Implement `P2-T05` as a pure bounded, time-aware cache.
+3. Implement `P2-T07` with Room for group metadata only.
+4. Implement `P2-T04` after the snapshot contract is stable.
+5. Implement `P2-T06` after parser outputs are stable.
+6. Run `P2-R01` before entering Phase 3.
 
 Do not implement listener callback processing yet. `MyNotificationListener` is
 intentionally an empty registered shell until Phase 3.

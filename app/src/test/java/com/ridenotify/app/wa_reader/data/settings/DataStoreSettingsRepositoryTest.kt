@@ -1,247 +1,227 @@
 package com.ridenotify.app.wa_reader.data.settings
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.ridenotify.app.wa_reader.model.AppSettings
 import com.ridenotify.app.wa_reader.model.ConversationId
 import com.ridenotify.app.wa_reader.model.GroupReadMode
 import com.ridenotify.app.wa_reader.model.RidingState
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-/**
- * Unit tests for DataStoreSettingsRepository.
- * These tests focus on the business logic and behavioral contracts.
- * Full integration tests with real DataStore would be instrumented tests.
- */
+@RunWith(RobolectricTestRunner::class)
 class DataStoreSettingsRepositoryTest {
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
 
-    /**
-     * Test that defaults are correct when no settings have been persisted.
-     */
-    @Test
-    fun defaults_areCorrectForColdStart() {
-        val defaults = AppSettings()
-        assertFalse(defaults.readerEnabled, "Reader should be disabled by default")
-        assertEquals(RidingState.INACTIVE, defaults.ridingState, "Riding should be inactive by default")
-        assertTrue(defaults.readPrivateMessages, "Private messages should be read by default")
-        assertEquals(GroupReadMode.NO_GROUPS, defaults.groupReadMode, "Group mode should be NO_GROUPS by default")
-        assertTrue(defaults.selectedConversationIds.isEmpty(), "Selected conversations should be empty by default")
-        assertTrue(defaults.announceSenderAndGroup, "Announcements should be enabled by default")
-        assertEquals(AppSettings.DEFAULT_SPEECH_RATE, defaults.speechRate, "Speech rate should default to 1.0")
+    private lateinit var context: Context
+    private lateinit var dataStore: DataStore<Preferences>
+    private lateinit var dataStoreScope: CoroutineScope
+    private lateinit var repository: DataStoreSettingsRepository
+
+    @Before
+    fun setUp() {
+        context = RuntimeEnvironment.getApplication().applicationContext
+        context.getSharedPreferences(OLD_PREFS_FILE, Context.MODE_PRIVATE).edit().clear().commit()
+        dataStoreScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val dataStoreFile = File(temporaryFolder.root, "settings.preferences_pb")
+        dataStore = PreferenceDataStoreFactory.create(scope = dataStoreScope) { dataStoreFile }
+        repository = DataStoreSettingsRepository(context, dataStore)
     }
 
-    /**
-     * Test that speech rate validation works correctly.
-     */
-    @Test
-    fun speechRate_validatesRange() {
-        try {
-            AppSettings(speechRate = 3.0f)
-            assertTrue(false, "Should reject speech rate outside [0.5, 2.0]")
-        } catch (e: IllegalArgumentException) {
-            assertTrue(e.message?.contains("speechRate") == true)
-        }
-
-        try {
-            AppSettings(speechRate = 0.2f)
-            assertTrue(false, "Should reject speech rate outside [0.5, 2.0]")
-        } catch (e: IllegalArgumentException) {
-            assertTrue(e.message?.contains("speechRate") == true)
-        }
-
-        // Valid rates should not throw
-        AppSettings(speechRate = 0.5f)
-        AppSettings(speechRate = 1.0f)
-        AppSettings(speechRate = 2.0f)
+    @After
+    fun tearDown() {
+        dataStoreScope.cancel()
+        context.getSharedPreferences(OLD_PREFS_FILE, Context.MODE_PRIVATE).edit().clear().commit()
     }
 
-    /**
-     * Test that selected conversations can be set and persist.
-     */
     @Test
-    fun selectedConversations_canBeSetAndRetrieved() {
-        val ids1 = setOf(ConversationId("conv-1"), ConversationId("conv-2"))
-        val settings = AppSettings(selectedConversationIds = ids1)
-        assertEquals(ids1, settings.selectedConversationIds)
-
-        val ids2 = setOf(ConversationId("conv-3"))
-        val updated = settings.copy(selectedConversationIds = ids2)
-        assertEquals(ids2, updated.selectedConversationIds)
+    fun firstRead_runsMigrationAndReturnsSafeDefaults() = runTest {
+        assertEquals(AppSettings(), repository.getSettings())
     }
 
-    /**
-     * Test that all settings can be updated independently.
-     */
     @Test
-    fun settings_canBeUpdatedIndependently() {
-        var s = AppSettings()
+    fun firstObservedValue_runsLegacyMigration() = runTest {
+        legacyPreferences().edit()
+            .putBoolean("flutter.isServiceActive", true)
+            .putBoolean("flutter.readPrivateMessages", false)
+            .putString("flutter.speechRate", FLUTTER_DOUBLE_PREFIX + "1.35")
+            .putString("flutter.selectedGroups", "must-not-migrate")
+            .putBoolean("flutter.isRidingModeActive", true)
+            .commit()
 
-        s = s.copy(readerEnabled = true)
-        assertTrue(s.readerEnabled)
-        assertEquals(RidingState.INACTIVE, s.ridingState) // unchanged
+        val settings = repository.observeSettings().first()
 
-        s = s.copy(ridingState = RidingState.ACTIVE)
-        assertTrue(s.readerEnabled) // unchanged
-        assertEquals(RidingState.ACTIVE, s.ridingState)
-
-        s = s.copy(readPrivateMessages = false)
-        assertTrue(s.readerEnabled)
-        assertEquals(RidingState.ACTIVE, s.ridingState)
-        assertFalse(s.readPrivateMessages)
-
-        s = s.copy(groupReadMode = GroupReadMode.ALL_OBSERVED_GROUPS)
-        assertEquals(GroupReadMode.ALL_OBSERVED_GROUPS, s.groupReadMode)
-        assertFalse(s.readPrivateMessages) // unchanged
-    }
-
-    /**
-     * Test that riding state transitions work.
-     */
-    @Test
-    fun ridingState_canTransition() {
-        var s = AppSettings(ridingState = RidingState.INACTIVE)
-        assertEquals(RidingState.INACTIVE, s.ridingState)
-
-        s = s.copy(ridingState = RidingState.ACTIVE)
-        assertEquals(RidingState.ACTIVE, s.ridingState)
-
-        s = s.copy(ridingState = RidingState.INACTIVE)
-        assertEquals(RidingState.INACTIVE, s.ridingState)
-    }
-
-    /**
-     * Test that group read mode can be changed between all three modes.
-     */
-    @Test
-    fun groupReadMode_canTransitionBetweenAllModes() {
-        var s = AppSettings(groupReadMode = GroupReadMode.NO_GROUPS)
-        assertEquals(GroupReadMode.NO_GROUPS, s.groupReadMode)
-
-        s = s.copy(groupReadMode = GroupReadMode.ALL_OBSERVED_GROUPS)
-        assertEquals(GroupReadMode.ALL_OBSERVED_GROUPS, s.groupReadMode)
-
-        s = s.copy(groupReadMode = GroupReadMode.SELECTED_GROUPS_ONLY)
-        assertEquals(GroupReadMode.SELECTED_GROUPS_ONLY, s.groupReadMode)
-
-        s = s.copy(groupReadMode = GroupReadMode.NO_GROUPS)
-        assertEquals(GroupReadMode.NO_GROUPS, s.groupReadMode)
-    }
-
-    /**
-     * Mock SettingsRepository for testing the contract.
-     */
-    private class MockSettingsRepository : SettingsRepository {
-        private var settings = AppSettings()
-
-        override fun observeSettings(): Flow<AppSettings> = flowOf(settings)
-
-        override suspend fun getSettings(): AppSettings = settings
-
-        override suspend fun setReaderEnabled(enabled: Boolean) {
-            settings = settings.copy(readerEnabled = enabled)
-        }
-
-        override suspend fun setReadPrivateMessages(enabled: Boolean) {
-            settings = settings.copy(readPrivateMessages = enabled)
-        }
-
-        override suspend fun setSpeechRate(rate: Float) {
-            settings = settings.copy(speechRate = rate)
-        }
-
-        override suspend fun setRidingState(riding: RidingState) {
-            settings = settings.copy(ridingState = riding)
-        }
-
-        override suspend fun setGroupReadMode(mode: GroupReadMode) {
-            settings = settings.copy(groupReadMode = mode)
-        }
-
-        override suspend fun setSelectedConversationIds(ids: Set<ConversationId>) {
-            settings = settings.copy(selectedConversationIds = ids)
-        }
-
-        override suspend fun setAnnounceSenderAndGroup(announce: Boolean) {
-            settings = settings.copy(announceSenderAndGroup = announce)
-        }
-
-        override suspend fun performMigrationIfNeeded() {
-            // Mock: no migration needed
-        }
-
-        override suspend fun resetAllSettings() {
-            settings = AppSettings()
-        }
-    }
-
-    /**
-     * Test that the repository contract allows setting and retrieving each setting.
-     */
-    @Test
-    fun repositoryContract_allowsSettingAndGetting() = runTest {
-        val repo = MockSettingsRepository()
-
-        repo.setReaderEnabled(true)
-        var settings = repo.getSettings()
         assertTrue(settings.readerEnabled)
-
-        repo.setReadPrivateMessages(false)
-        settings = repo.getSettings()
         assertFalse(settings.readPrivateMessages)
-
-        repo.setSpeechRate(1.5f)
-        settings = repo.getSettings()
-        assertEquals(1.5f, settings.speechRate)
-
-        repo.setRidingState(RidingState.ACTIVE)
-        settings = repo.getSettings()
-        assertEquals(RidingState.ACTIVE, settings.ridingState)
-
-        repo.setGroupReadMode(GroupReadMode.SELECTED_GROUPS_ONLY)
-        settings = repo.getSettings()
-        assertEquals(GroupReadMode.SELECTED_GROUPS_ONLY, settings.groupReadMode)
-
-        val ids = setOf(ConversationId("conv-1"))
-        repo.setSelectedConversationIds(ids)
-        settings = repo.getSettings()
-        assertEquals(ids, settings.selectedConversationIds)
-
-        repo.setAnnounceSenderAndGroup(false)
-        settings = repo.getSettings()
-        assertFalse(settings.announceSenderAndGroup)
-    }
-
-    /**
-     * Test that reset restores all defaults.
-     */
-    @Test
-    fun repositoryContract_resetRestoresDefaults() = runTest {
-        val repo = MockSettingsRepository()
-
-        // Set various non-default values
-        repo.setReaderEnabled(true)
-        repo.setReadPrivateMessages(false)
-        repo.setSpeechRate(1.8f)
-        repo.setRidingState(RidingState.ACTIVE)
-        repo.setGroupReadMode(GroupReadMode.ALL_OBSERVED_GROUPS)
-        repo.setSelectedConversationIds(setOf(ConversationId("conv-1")))
-        repo.setAnnounceSenderAndGroup(false)
-
-        // Reset all
-        repo.resetAllSettings()
-
-        val settings = repo.getSettings()
-        assertFalse(settings.readerEnabled)
-        assertTrue(settings.readPrivateMessages)
-        assertEquals(AppSettings.DEFAULT_SPEECH_RATE, settings.speechRate)
+        assertEquals(1.35f, settings.speechRate)
         assertEquals(RidingState.INACTIVE, settings.ridingState)
         assertEquals(GroupReadMode.NO_GROUPS, settings.groupReadMode)
         assertTrue(settings.selectedConversationIds.isEmpty())
-        assertTrue(settings.announceSenderAndGroup)
+    }
+
+    @Test
+    fun firstWrite_runsMigrationBeforeApplyingUpdate() = runTest {
+        legacyPreferences().edit()
+            .putBoolean("flutter.isServiceActive", true)
+            .putBoolean("flutter.readPrivateMessages", false)
+            .commit()
+
+        repository.setReaderEnabled(false)
+
+        val settings = repository.getSettings()
+        assertFalse(settings.readerEnabled)
+        assertFalse(settings.readPrivateMessages)
+    }
+
+    @Test
+    fun migration_isIdempotent() = runTest {
+        legacyPreferences().edit().putBoolean("flutter.isServiceActive", true).commit()
+        repository.performMigrationIfNeeded()
+        legacyPreferences().edit().putBoolean("flutter.isServiceActive", false).commit()
+
+        repository.performMigrationIfNeeded()
+
+        assertTrue(repository.getSettings().readerEnabled)
+    }
+
+    @Test
+    fun concurrentFirstAccess_migratesOnceWithoutRacing() = runTest {
+        legacyPreferences().edit().putBoolean("flutter.isServiceActive", true).commit()
+
+        coroutineScope {
+            List(8) { async { repository.performMigrationIfNeeded() } }.forEach { it.await() }
+        }
+
+        assertTrue(repository.getSettings().readerEnabled)
+    }
+
+    @Test
+    fun legacySpeechRate_isClampedAndMalformedValueUsesDefault() = runTest {
+        legacyPreferences().edit()
+            .putString("flutter.speechRate", FLUTTER_DOUBLE_PREFIX + "8.0")
+            .commit()
+        repository.performMigrationIfNeeded()
+        assertEquals(AppSettings.MAX_SPEECH_RATE, repository.getSettings().speechRate)
+
+        val secondStoreFile = File(temporaryFolder.root, "malformed.preferences_pb")
+        val secondStore = PreferenceDataStoreFactory.create(scope = dataStoreScope) { secondStoreFile }
+        val secondRepository = DataStoreSettingsRepository(context, secondStore)
+        legacyPreferences().edit()
+            .putString("flutter.speechRate", FLUTTER_DOUBLE_PREFIX + "not-a-number")
+            .commit()
+
+        assertEquals(AppSettings.DEFAULT_SPEECH_RATE, secondRepository.getSettings().speechRate)
+    }
+
+    @Test
+    fun setReaderEnabled_persistsValue() = runTest {
+        repository.setReaderEnabled(true)
+        assertTrue(repository.getSettings().readerEnabled)
+    }
+
+    @Test
+    fun setReadPrivateMessages_persistsValue() = runTest {
+        repository.setReadPrivateMessages(false)
+        assertFalse(repository.getSettings().readPrivateMessages)
+    }
+
+    @Test
+    fun setSpeechRate_persistsValue() = runTest {
+        repository.setSpeechRate(1.5f)
+        assertEquals(1.5f, repository.getSettings().speechRate)
+    }
+
+    @Test
+    fun setRidingState_persistsValue() = runTest {
+        repository.setRidingState(RidingState.ACTIVE)
+        assertEquals(RidingState.ACTIVE, repository.getSettings().ridingState)
+    }
+
+    @Test
+    fun setGroupReadMode_persistsValue() = runTest {
+        repository.setGroupReadMode(GroupReadMode.SELECTED_GROUPS_ONLY)
+        assertEquals(GroupReadMode.SELECTED_GROUPS_ONLY, repository.getSettings().groupReadMode)
+    }
+
+    @Test
+    fun setSelectedConversationIds_persistsValue() = runTest {
+        val ids = setOf(ConversationId("conv-1"), ConversationId("conv-2"))
+        repository.setSelectedConversationIds(ids)
+        assertEquals(ids, repository.getSettings().selectedConversationIds)
+    }
+
+    @Test
+    fun setAnnounceSenderAndGroup_persistsValue() = runTest {
+        repository.setAnnounceSenderAndGroup(false)
+        assertFalse(repository.getSettings().announceSenderAndGroup)
+    }
+
+    @Test
+    fun invalidSpeechRate_isRejectedWithoutChangingStoredValue() = runTest {
+        assertFailsWith<IllegalArgumentException> { repository.setSpeechRate(Float.NaN) }
+        assertFailsWith<IllegalArgumentException> { repository.setSpeechRate(2.1f) }
+        assertEquals(AppSettings.DEFAULT_SPEECH_RATE, repository.getSettings().speechRate)
+    }
+
+    @Test
+    fun corruptPersistedValues_fallBackWithoutTerminatingFlow() = runTest {
+        dataStore.edit { preferences ->
+            preferences[booleanPreferencesKey("migration_completed")] = true
+            preferences[stringPreferencesKey("riding_state")] = "UNKNOWN"
+            preferences[stringPreferencesKey("group_read_mode")] = "UNKNOWN"
+            preferences[floatPreferencesKey("speech_rate")] = Float.NaN
+            preferences[stringSetPreferencesKey("selected_conversation_ids")] = setOf("", "valid-id")
+        }
+
+        val settings = repository.getSettings()
+
+        assertEquals(RidingState.INACTIVE, settings.ridingState)
+        assertEquals(GroupReadMode.NO_GROUPS, settings.groupReadMode)
+        assertEquals(AppSettings.DEFAULT_SPEECH_RATE, settings.speechRate)
+        assertEquals(setOf(ConversationId("valid-id")), settings.selectedConversationIds)
+    }
+
+    @Test
+    fun reset_restoresDefaultsAndDoesNotRemigrateLegacyValues() = runTest {
+        legacyPreferences().edit().putBoolean("flutter.isServiceActive", true).commit()
+
+        repository.resetAllSettings()
+
+        assertEquals(AppSettings(), repository.getSettings())
+    }
+
+    private fun legacyPreferences() =
+        context.getSharedPreferences(OLD_PREFS_FILE, Context.MODE_PRIVATE)
+
+    private companion object {
+        const val OLD_PREFS_FILE = "FlutterSharedPreferences"
+        const val FLUTTER_DOUBLE_PREFIX = "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBEb3VibGUu"
     }
 }

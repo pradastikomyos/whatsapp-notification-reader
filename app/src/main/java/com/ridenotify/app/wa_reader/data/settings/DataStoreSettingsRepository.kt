@@ -3,6 +3,7 @@ package com.ridenotify.app.wa_reader.data.settings
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -14,8 +15,12 @@ import com.ridenotify.app.wa_reader.model.ConversationId
 import com.ridenotify.app.wa_reader.model.GroupReadMode
 import com.ridenotify.app.wa_reader.model.RidingState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private const val SETTINGS_DATASTORE_NAME = "app_settings"
 
@@ -42,6 +47,7 @@ private const val OLD_KEY_SELECTED_GROUPS = "flutter.selectedGroups"
 private const val OLD_KEY_IS_RIDING_MODE_ACTIVE = "flutter.isRidingModeActive"
 private const val OLD_KEY_AUTO_START_DRIVING = "flutter.autoStartDriving"
 private const val OLD_KEY_USE_BLUETOOTH = "flutter.useBluetooth"
+private const val FLUTTER_DOUBLE_PREFIX = "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBEb3VibGUu"
 
 /**
  * DataStore-based settings repository with old SharedPreferences migration support.
@@ -58,25 +64,15 @@ class DataStoreSettingsRepository(
     private val dataStore: DataStore<Preferences> = context.dataStore
 ) : SettingsRepository {
     private val appContext = context.applicationContext
+    private val migrationMutex = Mutex()
 
     /**
      * Observe settings as a Flow. The flow emits the latest persisted state
      * whenever any setting changes, and new collectors receive the current state.
      */
-    override fun observeSettings(): Flow<AppSettings> = dataStore.data.map { prefs ->
-        val ridingStateStr = prefs[KEY_RIDING_STATE] ?: RidingState.INACTIVE.name
-        val groupModeStr = prefs[KEY_GROUP_READ_MODE] ?: GroupReadMode.NO_GROUPS.name
-        val selectedIds = prefs[KEY_SELECTED_CONVERSATION_IDS]?.mapTo(mutableSetOf()) { ConversationId(it) } ?: emptySet()
-
-        AppSettings(
-            readerEnabled = prefs[KEY_READER_ENABLED] ?: false,
-            ridingState = RidingState.valueOf(ridingStateStr),
-            readPrivateMessages = prefs[KEY_READ_PRIVATE_MESSAGES] ?: true,
-            groupReadMode = GroupReadMode.valueOf(groupModeStr),
-            selectedConversationIds = selectedIds,
-            announceSenderAndGroup = prefs[KEY_ANNOUNCE_SENDER_AND_GROUP] ?: true,
-            speechRate = prefs[KEY_SPEECH_RATE] ?: AppSettings.DEFAULT_SPEECH_RATE,
-        )
+    override fun observeSettings(): Flow<AppSettings> = flow {
+        performMigrationIfNeeded()
+        emitAll(dataStore.data.map(::decodeSettings))
     }
 
     /**
@@ -87,13 +83,13 @@ class DataStoreSettingsRepository(
     }
 
     override suspend fun setReaderEnabled(enabled: Boolean) {
-        dataStore.edit { prefs ->
+        editSettings { prefs ->
             prefs[KEY_READER_ENABLED] = enabled
         }
     }
 
     override suspend fun setReadPrivateMessages(enabled: Boolean) {
-        dataStore.edit { prefs ->
+        editSettings { prefs ->
             prefs[KEY_READ_PRIVATE_MESSAGES] = enabled
         }
     }
@@ -102,31 +98,31 @@ class DataStoreSettingsRepository(
         require(rate in AppSettings.MIN_SPEECH_RATE..AppSettings.MAX_SPEECH_RATE) {
             "speechRate must be between ${AppSettings.MIN_SPEECH_RATE} and ${AppSettings.MAX_SPEECH_RATE}"
         }
-        dataStore.edit { prefs ->
+        editSettings { prefs ->
             prefs[KEY_SPEECH_RATE] = rate
         }
     }
 
     override suspend fun setRidingState(riding: RidingState) {
-        dataStore.edit { prefs ->
+        editSettings { prefs ->
             prefs[KEY_RIDING_STATE] = riding.name
         }
     }
 
     override suspend fun setGroupReadMode(mode: GroupReadMode) {
-        dataStore.edit { prefs ->
+        editSettings { prefs ->
             prefs[KEY_GROUP_READ_MODE] = mode.name
         }
     }
 
     override suspend fun setSelectedConversationIds(ids: Set<ConversationId>) {
-        dataStore.edit { prefs ->
+        editSettings { prefs ->
             prefs[KEY_SELECTED_CONVERSATION_IDS] = ids.map { it.value }.toSet()
         }
     }
 
     override suspend fun setAnnounceSenderAndGroup(announce: Boolean) {
-        dataStore.edit { prefs ->
+        editSettings { prefs ->
             prefs[KEY_ANNOUNCE_SENDER_AND_GROUP] = announce
         }
     }
@@ -149,51 +145,10 @@ class DataStoreSettingsRepository(
      * After migration, KEY_MIGRATION_COMPLETED is set to prevent re-running on subsequent starts.
      */
     override suspend fun performMigrationIfNeeded() {
-        dataStore.edit { prefs ->
-            if (prefs[KEY_MIGRATION_COMPLETED] == true) {
-                return@edit // Already migrated; do nothing.
+        migrationMutex.withLock {
+            dataStore.edit { prefs ->
+                migrateIfNeeded(prefs)
             }
-
-            val oldPrefs = appContext.getSharedPreferences(OLD_PREFS_FILE_NAME, Context.MODE_PRIVATE)
-
-            // MIGRATE: flutter.isServiceActive → readerEnabled
-            val oldReaderActive = oldPrefs.getBoolean(OLD_KEY_IS_SERVICE_ACTIVE, false)
-            prefs[KEY_READER_ENABLED] = oldReaderActive
-
-            // MIGRATE: flutter.readPrivateMessages → readPrivateMessages
-            val oldReadPrivate = oldPrefs.getBoolean(OLD_KEY_READ_PRIVATE_MESSAGES, true)
-            prefs[KEY_READ_PRIVATE_MESSAGES] = oldReadPrivate
-
-            // TRANSFORM: flutter.speechRate → speechRate
-            // The old Flutter app used flutter_tts plugin. Verify: the plugin's Android implementation
-            // uses TextToSpeech.setSpeechRate() with the same 0.5-2.0 range. Since we verified this
-            // against the plugin behavior and it matches native Android TextToSpeech semantics exactly,
-            // a direct copy is safe. If the old value is outside [0.5, 2.0], clamp it to valid range.
-            val oldRate = oldPrefs.getFloat(OLD_KEY_SPEECH_RATE, AppSettings.DEFAULT_SPEECH_RATE)
-            val migratedRate = oldRate.coerceIn(AppSettings.MIN_SPEECH_RATE, AppSettings.MAX_SPEECH_RATE)
-            prefs[KEY_SPEECH_RATE] = migratedRate
-
-            // RESET: flutter.selectedGroups - discard entirely per ADR-001 group-selection safety rule
-            // (old group model has no direct mapping to ALL_OBSERVED_GROUPS / SELECTED_GROUPS_ONLY / NO_GROUPS)
-            // Result: selectedConversationIds remains empty, groupReadMode defaults to NO_GROUPS
-
-            // RESET: flutter.isRidingModeActive - await ADR-007 riding semantics approval before migration
-            // Result: ridingState defaults to INACTIVE
-
-            // RESET: flutter.autoStartDriving - not implemented in v1; no destination field
-            // (UI-only toggle in old app, verified in old source)
-
-            // RESET: flutter.useBluetooth - not implemented in v1; no destination field
-            // (UI-only toggle in old app, verified in old source)
-
-            // Set all defaults for fields not migrated
-            prefs[KEY_RIDING_STATE] = RidingState.INACTIVE.name
-            prefs[KEY_GROUP_READ_MODE] = GroupReadMode.NO_GROUPS.name
-            prefs[KEY_SELECTED_CONVERSATION_IDS] = emptySet()
-            prefs[KEY_ANNOUNCE_SENDER_AND_GROUP] = true
-
-            // Mark migration as complete
-            prefs[KEY_MIGRATION_COMPLETED] = true
         }
     }
 
@@ -202,7 +157,7 @@ class DataStoreSettingsRepository(
      * Group selection is also reset to empty.
      */
     override suspend fun resetAllSettings() {
-        dataStore.edit { prefs ->
+        editSettings { prefs ->
             prefs.clear()
             prefs[KEY_READER_ENABLED] = false
             prefs[KEY_RIDING_STATE] = RidingState.INACTIVE.name
@@ -214,4 +169,68 @@ class DataStoreSettingsRepository(
             prefs[KEY_MIGRATION_COMPLETED] = true // Don't re-migrate after reset
         }
     }
+
+    private suspend fun editSettings(transform: (MutablePreferences) -> Unit) {
+        migrationMutex.withLock {
+            dataStore.edit { prefs ->
+                migrateIfNeeded(prefs)
+                transform(prefs)
+            }
+        }
+    }
+
+    private fun migrateIfNeeded(prefs: MutablePreferences) {
+        if (prefs[KEY_MIGRATION_COMPLETED] == true) return
+
+        val legacyValues = appContext
+            .getSharedPreferences(OLD_PREFS_FILE_NAME, Context.MODE_PRIVATE)
+            .all
+        prefs[KEY_READER_ENABLED] = legacyValues[OLD_KEY_IS_SERVICE_ACTIVE] as? Boolean ?: false
+        prefs[KEY_READ_PRIVATE_MESSAGES] =
+            legacyValues[OLD_KEY_READ_PRIVATE_MESSAGES] as? Boolean ?: true
+        prefs[KEY_SPEECH_RATE] = decodeLegacySpeechRate(legacyValues[OLD_KEY_SPEECH_RATE])
+
+        // Group and riding preferences are intentionally reset per ADR-001.
+        prefs[KEY_RIDING_STATE] = RidingState.INACTIVE.name
+        prefs[KEY_GROUP_READ_MODE] = GroupReadMode.NO_GROUPS.name
+        prefs[KEY_SELECTED_CONVERSATION_IDS] = emptySet()
+        prefs[KEY_ANNOUNCE_SENDER_AND_GROUP] = true
+        prefs[KEY_MIGRATION_COMPLETED] = true
+    }
+
+    private fun decodeSettings(prefs: Preferences): AppSettings {
+        val speechRate = prefs[KEY_SPEECH_RATE]
+            ?.takeIf { it.isFinite() && it in AppSettings.MIN_SPEECH_RATE..AppSettings.MAX_SPEECH_RATE }
+            ?: AppSettings.DEFAULT_SPEECH_RATE
+        val selectedIds = prefs[KEY_SELECTED_CONVERSATION_IDS]
+            .orEmpty()
+            .mapNotNullTo(mutableSetOf()) { value ->
+                value.takeIf(String::isNotBlank)?.let(::ConversationId)
+            }
+
+        return AppSettings(
+            readerEnabled = prefs[KEY_READER_ENABLED] ?: false,
+            ridingState = enumValueOrDefault(prefs[KEY_RIDING_STATE], RidingState.INACTIVE),
+            readPrivateMessages = prefs[KEY_READ_PRIVATE_MESSAGES] ?: true,
+            groupReadMode = enumValueOrDefault(prefs[KEY_GROUP_READ_MODE], GroupReadMode.NO_GROUPS),
+            selectedConversationIds = selectedIds,
+            announceSenderAndGroup = prefs[KEY_ANNOUNCE_SENDER_AND_GROUP] ?: true,
+            speechRate = speechRate,
+        )
+    }
+
+    private fun decodeLegacySpeechRate(value: Any?): Float {
+        val rate = when (value) {
+            is Number -> value.toFloat()
+            is String -> value.removePrefix(FLUTTER_DOUBLE_PREFIX).toFloatOrNull()
+            else -> null
+        }
+        return rate
+            ?.takeIf(Float::isFinite)
+            ?.coerceIn(AppSettings.MIN_SPEECH_RATE, AppSettings.MAX_SPEECH_RATE)
+            ?: AppSettings.DEFAULT_SPEECH_RATE
+    }
+
+    private inline fun <reified T : Enum<T>> enumValueOrDefault(value: String?, default: T): T =
+        enumValues<T>().firstOrNull { it.name == value } ?: default
 }
