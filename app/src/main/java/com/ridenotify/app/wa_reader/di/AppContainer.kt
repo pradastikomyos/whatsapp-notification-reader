@@ -6,6 +6,8 @@ import com.ridenotify.app.wa_reader.data.settings.SettingsRepository
 import com.ridenotify.app.wa_reader.data.conversations.ConversationRepository
 import com.ridenotify.app.wa_reader.data.conversations.room.ConversationDatabase
 import com.ridenotify.app.wa_reader.data.conversations.room.RoomConversationRepository
+import com.ridenotify.app.wa_reader.listener.ListenerConnectionTracker
+import com.ridenotify.app.wa_reader.listener.SerializedNotificationIngress
 
 class AppContainer(context: Context) {
     val applicationContext: Context = context.applicationContext
@@ -22,4 +24,7 @@ class AppContainer(context: Context) {
     val conversationRepository: ConversationRepository by lazy {
         RoomConversationRepository(conversationDatabase.observedConversationDao())
     }
+
+    val listenerConnectionTracker = ListenerConnectionTracker()
+    val notificationIngress = SerializedNotificationIngress()
 }

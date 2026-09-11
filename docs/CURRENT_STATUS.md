@@ -24,7 +24,8 @@ new change.
 - `P2-T03 Notification snapshot extraction` passed locally.
 - AndroidX Core is pinned to compatible stable version `1.17.0`; Core 1.18+
   requires the API 36.1 toolchain while this project remains on compileSdk 36.
-- Next implementation task is `P3-T01 Listener service`.
+- `P3-T01 Listener service` is complete locally.
+- Next implementation task is `P3-T02 Pipeline orchestration`.
 - ADB now sees the Xiaomi Mi Mix 2S, but notification access must still be
   granted manually before Phase 3 end-to-end listener testing.
 
