@@ -1,6 +1,6 @@
 # Current Project Status
 
-Last updated: 2026-09-11
+Last updated: 2026-09-12
 Workspace: `C:\Users\prada\Documents\whatsapp notification reader`
 Source prototype: `C:\Users\prada\Documents\prjkwanotif`
 Version control: Git repository initialized on branch `main`; public GitHub
@@ -11,24 +11,90 @@ new change.
 
 ## Executive Status
 
+- Current product behavior is direct-message reading only. Parsed group messages
+  are rejected unconditionally before formatting or speech.
+- Group policy, selection, observed-group UI/catalogue, and Room/KSP dependencies
+  were removed under `ADR-013`. Startup retires the old catalogue database.
+- Legacy DataStore cleanup preserves the sender-announcement boolean under
+  `announce_sender` and removes all retired group keys even on already-migrated installs.
+
 - Phase 0, architecture decisions and evidence: **Passed**.
 - Phase 1, native Android foundation: **Passed locally**.
 - Phase 2, domain and data: **Passed locally**.
 - Current completed Phase 2 tasks: `P2-T01` through `P2-T07` and `P2-R01`.
-- No production notification parsing, TTS, audio focus,
-  foreground playback service, or finished product UI exists yet.
-- The app currently builds, installs, and opens as a native Compose foundation.
+- Phase 3, listener integration: **Passed locally** in `docs/reviews/P3-R01.md`.
+- Phase 4 `P4-T01` through `P4-T04` are implemented and verified locally;
+  device-audio qualification remains pending.
+- `P5-T01` onboarding and independent platform/repository status are complete
+  locally. Phase 5 coding may continue while the Phase 4 physical-device gate
+  debt remains open; neither phase may be marked passed before its required
+  review and device evidence.
+- P5 routes are integrated locally and P6 local hardening/release preparation
+  is complete. Phase 5 and Phase 6 remain open pending physical qualification,
+  signed artifact install/upgrade evidence, and their final reviews.
+
+## Qualification Strategy
+
+All coding, local automated verification, UI review, hardening, and release
+preparation run before the physical-device campaign. The final campaign combines
+`P4-T05`, `P6-T02`, the physical measurements from `P6-T04`, and the install and
+upgrade checks from `P6-T05`. It must cover the approved API/OEM, audio-route,
+interruption, notification-privacy, WhatsApp/Business, process-recreation, and
+foreground-service outcome matrix. This sequencing authorizes implementation
+work only; it does not close Phase 4 or support release claims.
 
 ## Active Work
 
-- `P2-T03 Notification snapshot extraction` passed locally.
 - AndroidX Core is pinned to compatible stable version `1.17.0`; Core 1.18+
   requires the API 36.1 toolchain while this project remains on compileSdk 36.
 - `P3-T01 Listener service` is complete locally.
 - `P3-T02 Pipeline orchestration` is complete locally.
-- Next implementation task is `P3-T03 Listener recovery`.
-- ADB now sees the Xiaomi Mi Mix 2S, but notification access must still be
-  granted manually before Phase 3 end-to-end listener testing.
+- `P3-T03 Listener recovery` starts the UI-independent pipeline from the
+  application process, reloads settings with a bounded fail-closed wait, and
+  rate-limits valid rebind attempts to once per 30 seconds.
+- The former `P3-T04` observed-conversation integration is superseded and removed
+  by `ADR-013`; group classification remains only as a fail-closed policy input.
+- `P3-R01` passed locally after the independent AI review and PowerShell suite.
+- `P4-T01` through `P4-T04` are implemented: Indonesian-only asynchronous TTS,
+  transient speech audio focus, the bounded coordinator, and an API 35+
+  `mediaPlayback` foreground-service gate. The focused speech suite, full unit
+  suite, lint, debug assembly, and diff check pass from native PowerShell.
+- A partial campaign on the Xiaomi Mi Mix 2S confirmed notification access,
+  listener binding with the UI absent, a screen-off transition, and immediate
+  listener rebind after process replacement. Privacy-safe evidence is in
+  `docs/reviews/DEVICE_QUALIFICATION_2026-09-12.md`; WhatsApp callback and audio
+  evidence remain pending.
+- `P5-T01` opens Android's notification-listener settings and, on return,
+  separately displays notification access, listener connection, reader
+  preference, manual riding state, and Indonesian TTS readiness. Settings are
+  displayed as loading until DataStore produces a snapshot, never as guessed
+  defaults. Access lookup fails closed and TTS discovery does not claim playback
+  success before a test utterance. Focused status tests, the full unit suite,
+  `lintDebug`, and `assembleDebug` pass.
+- The former `P5-T04` observed-groups route is superseded and removed.
+- `P5-T05` provides a manual riding route backed only by DataStore. Its control
+  remains independent from reader enablement and reports the exact effective
+  reader/riding gate state.
+- `P5-T02` provides repository-backed reader, riding, and speech-rate controls.
+  Test speech uses the shared coordinator and reports terminal playback rather
+  than treating locale discovery as proof of playback.
+- `P5-T03` now provides direct-message and direct-sender announcement settings.
+  Locale and queue policy are fixed v1 facts, not unimplemented controls.
+- Shared navigation now exposes status, controls, riding mode, and reader
+  settings without taking ownership of the listener or speech
+  lifecycle. The UI follows system dark mode and scrolls all route content.
+- P5-T06 static accessibility/responsive review and P5-R01 local pre-review are
+  recorded; physical TalkBack and form-factor evidence remain pending.
+- The direct-message-only UI redesign is accepted as passed for its current
+  product scope in `docs/reviews/UI-REDESIGN-2026-09-12.md`. Its active rules and
+  external design references are recorded in `docs/DESIGN_SYSTEM.md`.
+- Theme selection follows Android by default and offers a persistent moon/sun
+  override from the top app bar.
+- P6 local work completed: unit/lint/debug/release builds, static
+  security/privacy review, release artifact measurement, shrink configuration,
+  release documentation, and the device campaign checklist. A partial device
+  campaign has run, but its remaining matrix still blocks final reviews. No
+  emulator or instrumented suite is configured.
 
 ## Completed Work
 
@@ -77,7 +143,7 @@ files under `docs/reviews/`.
 Implemented pure Kotlin models:
 
 - `NotificationSnapshot` and MessagingStyle snapshots.
-- `ConversationId`, conversation type, group mode, and riding state.
+- `ConversationId`, conversation type, and riding state.
 - Explicit parsed-notification outcomes.
 - `ParsedMessage` and parse source.
 - Conservative `AppSettings` defaults.
@@ -91,7 +157,9 @@ Implemented DataStore settings:
 - First read or write automatically runs the one-time legacy migration.
 - Migration is concurrency-safe and follows the ADR-001 migrate/reset map.
 - Flutter legacy encoded doubles are decoded and range-checked.
-- Invalid persisted enums, rates, and blank conversation IDs fail to safe defaults.
+- Invalid persisted enums and rates fail to safe defaults.
+- Retirement migration removes old group policy/selection keys and legacy Flutter
+  selection data while preserving the previous sender-announcement value.
 - Robolectric integration tests exercise real Preferences DataStore files.
 
 Implemented notification snapshot extraction:
@@ -102,19 +170,18 @@ Implemented notification snapshot extraction:
   messages/senders/timestamps are covered by Robolectric tests.
 - Framework notification objects do not cross into downstream domain APIs.
 
-Implemented parser, deduplication, and conversation catalogue:
+Implemented parser and deduplication:
 
 - Ordered WhatsApp parser covers all 14 synthetic fixtures / 18 captures and
-  fails closed for unsupported packages and ambiguous notifications.
+  fails closed for unsupported packages and ambiguous legacy notifications.
 - In-memory fingerprint deduplication is bounded and clock-driven; raw message
   bodies are never stored or persisted.
-- Room persists group catalogue metadata only, with discovery and selection
-  serialized and kept logically separate.
 
 Implemented reading policy and speech formatting:
 
-- Reader and riding gates have fixed precedence before private/group policy.
-- Redacted, unsupported, stale, and every explicit group mode fail closed.
+- Reader and riding gates have fixed precedence before direct-message policy.
+- Every parsed group is rejected as `SkipGroupReadingDisabled`; redacted,
+  unsupported, and stale notifications also fail closed.
 - Indonesian speech text is sanitized and bounded to 240 characters without
   dropping all message content or splitting Unicode surrogate pairs.
 
@@ -140,11 +207,10 @@ Important binding decisions:
 - No notification cancellation, DND manipulation, global volume writes, or
   synthetic media play/pause events.
 - DataStore will be the settings source of truth.
-- Room is approved only for group conversation catalogue metadata.
-- Direct-message identities/names must not be persisted.
+- No conversation identifiers or names are persisted.
 - Message bodies and sender/group names must not be logged or persisted.
 - Reader defaults disabled; riding mode defaults inactive.
-- Group policy defaults to `NO_GROUPS`.
+- Group reading has no enablement and is always disabled.
 - Speech queue capacity is 20 pending items, maximum age 180 seconds, maximum
   utterance text length 240 characters, and only one utterance may be active.
 - API 35+ production speech must start a short-lived `mediaPlayback` foreground
@@ -201,6 +267,12 @@ LaunchState: COLD
 TotalTime: 1144 ms
 ```
 
+The later partial qualification run, after notification access was enabled,
+reported a warm activity start of 2,765 ms because Android immediately rebound
+the listener process. UI-absent memory after 10 seconds was 73,406 KB PSS and
+179,204 KB RSS on the debug build. These are single-device samples, not release
+performance claims.
+
 Package-manager inspection confirmed:
 
 - version code 2 / version name 2.0.0;
@@ -250,23 +322,12 @@ recreated by Gradle.
 
 ## Next Ready Tasks
 
-The following Phase 2 tasks are ready after `P2-T02`:
-
-1. `P2-T03 Notification snapshot extraction`
-2. `P2-T05 Notification deduplication`
-3. `P2-T07 Conversation repository`
-
-Recommended resume order without workers:
-
-1. Implement `P2-T03` with Robolectric-built Notification/MessagingStyle tests.
-2. Implement `P2-T05` as a pure bounded, time-aware cache.
-3. Implement `P2-T07` with Room for group metadata only.
-4. Implement `P2-T04` after the snapshot contract is stable.
-5. Implement `P2-T06` after parser outputs are stable.
-6. Run `P2-R01` before entering Phase 3.
-
-Do not implement listener callback processing yet. `MyNotificationListener` is
-intentionally an empty registered shell until Phase 3.
+1. Complete the remaining physical-device matrix for `P4-T05`, `P6-T02`,
+   physical `P6-T04`, and `P6-T05` install/upgrade verification; retain the
+   partial evidence already recorded.
+2. Resolve or explicitly accept every critical/high campaign defect.
+3. Complete `P4-R01`, finalize `P5-R01`, run final release verification, and
+   complete `P6-R01`.
 
 ## Open Risks And Blockers
 
@@ -277,10 +338,14 @@ intentionally an empty registered shell until Phase 3.
   LineageOS device and is not documented as a universal Android exemption.
   Production must catch rejection and skip speech.
 - API 33, 34, 36 and additional OEM/device tests remain outstanding.
+- Release R8 succeeds but emits Kotlin-metadata compatibility warnings; review
+  AGP/R8/Kotlin compatibility before a public signed rollout.
+- No emulator or `androidTest` suite is configured, so instrumentation evidence
+  remains part of the final physical qualification campaign.
 - Notification fixtures are synthetic. Real WhatsApp structure still requires
   privacy-safe validation during later device qualification.
-- No production feature should be presented as working yet; the installed app
-  is only a foundation screen and registered empty listener.
+- Phase 3 listener behavior still needs real-device WhatsApp validation before
+  it can be presented as a working product feature.
 
 ## Version-Control Procedure
 

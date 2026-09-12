@@ -15,7 +15,7 @@ enum class DiagnosticOutcome {
     SKIP_READER_DISABLED,
     SKIP_RIDING_MODE_INACTIVE,
     SKIP_PRIVATE_DISABLED,
-    SKIP_GROUP_NOT_SELECTED,
+    SKIP_GROUP_READING_DISABLED,
     SKIP_REDACTED,
     SKIP_UNSUPPORTED,
     SKIP_TOO_OLD;
@@ -26,7 +26,7 @@ enum class DiagnosticOutcome {
             ReadingDecision.SkipReaderDisabled -> SKIP_READER_DISABLED
             ReadingDecision.SkipRidingModeInactive -> SKIP_RIDING_MODE_INACTIVE
             ReadingDecision.SkipPrivateDisabled -> SKIP_PRIVATE_DISABLED
-            ReadingDecision.SkipGroupNotSelected -> SKIP_GROUP_NOT_SELECTED
+            ReadingDecision.SkipGroupReadingDisabled -> SKIP_GROUP_READING_DISABLED
             ReadingDecision.SkipRedacted -> SKIP_REDACTED
             ReadingDecision.SkipUnsupported -> SKIP_UNSUPPORTED
             ReadingDecision.SkipTooOld -> SKIP_TOO_OLD

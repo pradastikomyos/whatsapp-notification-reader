@@ -3,7 +3,6 @@ package com.ridenotify.app.wa_reader.policy
 import com.ridenotify.app.wa_reader.model.AppSettings
 import com.ridenotify.app.wa_reader.model.ConversationId
 import com.ridenotify.app.wa_reader.model.ConversationType
-import com.ridenotify.app.wa_reader.model.GroupReadMode
 import com.ridenotify.app.wa_reader.model.ParseSource
 import com.ridenotify.app.wa_reader.model.ParsedMessage
 import com.ridenotify.app.wa_reader.model.ParsedNotification
@@ -44,28 +43,13 @@ class ReadingPolicyEvaluatorTest {
     }
 
     @Test
-    fun `all group modes are explicit and selection never affects direct messages`() {
-        val selectedId = ConversationId("selected")
-        val cases = listOf(
-            GroupReadMode.ALL_OBSERVED_GROUPS to emptySet(),
-            GroupReadMode.ALL_OBSERVED_GROUPS to setOf(selectedId),
-            GroupReadMode.SELECTED_GROUPS_ONLY to setOf(ConversationId("group")),
+    fun `group reading is unconditionally disabled`() {
+        assertEquals(ReadingDecision.SkipGroupReadingDisabled, evaluator.evaluate(groupMessage(), enabled))
+        assertEquals(
+            ReadingDecision.SkipGroupReadingDisabled,
+            evaluator.evaluate(groupMessage(), AppSettings()),
         )
-        cases.forEach { (mode, selected) ->
-            assertIs<ReadingDecision.Speak>(
-                evaluator.evaluate(groupMessage(), enabled.copy(groupReadMode = mode, selectedConversationIds = selected)),
-            )
-        }
-
-        listOf(
-            enabled.copy(groupReadMode = GroupReadMode.SELECTED_GROUPS_ONLY),
-            enabled.copy(groupReadMode = GroupReadMode.SELECTED_GROUPS_ONLY, selectedConversationIds = setOf(selectedId)),
-            enabled.copy(groupReadMode = GroupReadMode.NO_GROUPS, selectedConversationIds = setOf(ConversationId("group"))),
-        ).forEach { settings ->
-            assertEquals(ReadingDecision.SkipGroupNotSelected, evaluator.evaluate(groupMessage(), settings))
-        }
-
-        assertIs<ReadingDecision.Speak>(evaluator.evaluate(message(), enabled.copy(groupReadMode = GroupReadMode.NO_GROUPS)))
+        assertIs<ReadingDecision.Speak>(evaluator.evaluate(message(), enabled))
     }
 
     @Test

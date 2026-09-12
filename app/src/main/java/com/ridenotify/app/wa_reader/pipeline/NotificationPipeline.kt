@@ -12,6 +12,7 @@ import com.ridenotify.app.wa_reader.model.ReadingDecision
 import com.ridenotify.app.wa_reader.model.SpeechRequest
 import com.ridenotify.app.wa_reader.policy.ReadingPolicyEvaluator
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -184,7 +185,8 @@ class DefaultNotificationPipeline(
             withTimeoutOrNull(settingsTimeoutMillis) {
                 settingsRepository.getSettings()
             }
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
             null
         }
 

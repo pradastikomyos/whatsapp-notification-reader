@@ -4,9 +4,7 @@ data class AppSettings(
     val readerEnabled: Boolean = false,
     val ridingState: RidingState = RidingState.INACTIVE,
     val readPrivateMessages: Boolean = true,
-    val groupReadMode: GroupReadMode = GroupReadMode.NO_GROUPS,
-    val selectedConversationIds: Set<ConversationId> = emptySet(),
-    val announceSenderAndGroup: Boolean = true,
+    val announceSender: Boolean = true,
     val speechRate: Float = DEFAULT_SPEECH_RATE,
 ) {
     init {

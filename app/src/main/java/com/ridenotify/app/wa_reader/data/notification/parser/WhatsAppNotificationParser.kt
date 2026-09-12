@@ -65,7 +65,7 @@ class WhatsAppNotificationParser : NotificationParser {
             ?: return ParsedNotification.Unsupported(UnsupportedReason.EMPTY_CONTENT)
         val senders = distinctLegacySenders(snapshot.textLines)
         val isGroup = senders.size >= 2
-        if (!isGroup && snapshot.title.isNullOrBlank()) {
+        if (!isGroup) {
             return ParsedNotification.Unsupported(UnsupportedReason.AMBIGUOUS_LEGACY_CONTENT)
         }
         return messagesResult(

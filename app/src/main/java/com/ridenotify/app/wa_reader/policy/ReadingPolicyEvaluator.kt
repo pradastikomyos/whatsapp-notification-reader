@@ -2,7 +2,6 @@ package com.ridenotify.app.wa_reader.policy
 
 import com.ridenotify.app.wa_reader.model.AppSettings
 import com.ridenotify.app.wa_reader.model.ConversationType
-import com.ridenotify.app.wa_reader.model.GroupReadMode
 import com.ridenotify.app.wa_reader.model.ParsedMessage
 import com.ridenotify.app.wa_reader.model.ParsedNotification
 import com.ridenotify.app.wa_reader.model.ReadingDecision
@@ -21,18 +20,17 @@ class ReadingPolicyEvaluator(
         }
 
     fun evaluate(message: ParsedMessage, settings: AppSettings): ReadingDecision {
-        baseGate(settings)?.let { return it }
-
-        if (message.conversationType == ConversationType.DIRECT && !settings.readPrivateMessages) {
-            return ReadingDecision.SkipPrivateDisabled
+        if (message.conversationType == ConversationType.GROUP) {
+            return ReadingDecision.SkipGroupReadingDisabled
         }
-        if (message.conversationType == ConversationType.GROUP && !groupIsAllowed(message, settings)) {
-            return ReadingDecision.SkipGroupNotSelected
+        baseGate(settings)?.let { return it }
+        if (!settings.readPrivateMessages) {
+            return ReadingDecision.SkipPrivateDisabled
         }
         if (messageAgeMillis(message) > MAX_MESSAGE_AGE_MILLIS) {
             return ReadingDecision.SkipTooOld
         }
-        val text = formatter.format(message, settings.announceSenderAndGroup)
+        val text = formatter.format(message, settings.announceSender)
             ?: return ReadingDecision.SkipUnsupported
         return ReadingDecision.Speak(
             SpeechRequest(message.conversationId, text, message.postedAtMillis),
@@ -44,13 +42,6 @@ class ReadingPolicyEvaluator(
         settings.ridingState == RidingState.INACTIVE -> ReadingDecision.SkipRidingModeInactive
         else -> null
     }
-
-    private fun groupIsAllowed(message: ParsedMessage, settings: AppSettings): Boolean =
-        when (settings.groupReadMode) {
-            GroupReadMode.ALL_OBSERVED_GROUPS -> true
-            GroupReadMode.SELECTED_GROUPS_ONLY -> message.conversationId in settings.selectedConversationIds
-            GroupReadMode.NO_GROUPS -> false
-        }
 
     private fun messageAgeMillis(message: ParsedMessage): Long {
         val now = clockMillis()

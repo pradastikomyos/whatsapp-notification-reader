@@ -26,8 +26,8 @@ Run from the project root.
 # Run Android lint.
 .\gradlew.bat lintDebug
 
-# Reproduce the complete CI verification locally.
-.\gradlew.bat testDebugUnitTest lintDebug assembleDebug
+# Reproduce the local automated verification, including an unsigned shrunk release.
+.\gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleRelease
 ```
 
 Kotlin and XML formatting follows `.editorconfig`. Until a formatter is added
@@ -48,3 +48,13 @@ The package dump must show `targetSdk=36` and the service component
 
 Do not grant notification access through ADB for production onboarding. The
 user grants that special access through Android settings.
+
+## Release Signing
+
+Release signing material remains outside source control. Supply all four Gradle
+properties only in a secure local/CI secret store:
+`RIDENOTIFY_STORE_FILE`, `RIDENOTIFY_STORE_PASSWORD`,
+`RIDENOTIFY_KEY_ALIAS`, and `RIDENOTIFY_KEY_PASSWORD`.
+
+Use `docs/reviews/DEVICE_QUALIFICATION_CAMPAIGN.md` for the final device work;
+do not treat this smoke command as qualification evidence.

@@ -11,8 +11,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ridenotify.app.wa_reader.model.AppSettings
-import com.ridenotify.app.wa_reader.model.ConversationId
-import com.ridenotify.app.wa_reader.model.GroupReadMode
 import com.ridenotify.app.wa_reader.model.RidingState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -32,9 +30,10 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
 private val KEY_READER_ENABLED = booleanPreferencesKey("reader_enabled")
 private val KEY_RIDING_STATE = stringPreferencesKey("riding_state")
 private val KEY_READ_PRIVATE_MESSAGES = booleanPreferencesKey("read_private_messages")
-private val KEY_GROUP_READ_MODE = stringPreferencesKey("group_read_mode")
-private val KEY_SELECTED_CONVERSATION_IDS = stringSetPreferencesKey("selected_conversation_ids")
-private val KEY_ANNOUNCE_SENDER_AND_GROUP = booleanPreferencesKey("announce_sender_and_group")
+private val KEY_ANNOUNCE_SENDER = booleanPreferencesKey("announce_sender")
+private val RETIRED_KEY_GROUP_READ_MODE = stringPreferencesKey("group_read_mode")
+private val RETIRED_KEY_SELECTED_CONVERSATION_IDS = stringSetPreferencesKey("selected_conversation_ids")
+private val RETIRED_KEY_ANNOUNCE_SENDER_AND_GROUP = booleanPreferencesKey("announce_sender_and_group")
 private val KEY_SPEECH_RATE = floatPreferencesKey("speech_rate")
 private val KEY_MIGRATION_COMPLETED = booleanPreferencesKey("migration_completed")
 
@@ -109,21 +108,9 @@ class DataStoreSettingsRepository(
         }
     }
 
-    override suspend fun setGroupReadMode(mode: GroupReadMode) {
+    override suspend fun setAnnounceSender(announce: Boolean) {
         editSettings { prefs ->
-            prefs[KEY_GROUP_READ_MODE] = mode.name
-        }
-    }
-
-    override suspend fun setSelectedConversationIds(ids: Set<ConversationId>) {
-        editSettings { prefs ->
-            prefs[KEY_SELECTED_CONVERSATION_IDS] = ids.map { it.value }.toSet()
-        }
-    }
-
-    override suspend fun setAnnounceSenderAndGroup(announce: Boolean) {
-        editSettings { prefs ->
-            prefs[KEY_ANNOUNCE_SENDER_AND_GROUP] = announce
+            prefs[KEY_ANNOUNCE_SENDER] = announce
         }
     }
 
@@ -154,7 +141,6 @@ class DataStoreSettingsRepository(
 
     /**
      * Reset all settings to their defaults.
-     * Group selection is also reset to empty.
      */
     override suspend fun resetAllSettings() {
         editSettings { prefs ->
@@ -162,9 +148,7 @@ class DataStoreSettingsRepository(
             prefs[KEY_READER_ENABLED] = false
             prefs[KEY_RIDING_STATE] = RidingState.INACTIVE.name
             prefs[KEY_READ_PRIVATE_MESSAGES] = true
-            prefs[KEY_GROUP_READ_MODE] = GroupReadMode.NO_GROUPS.name
-            prefs[KEY_SELECTED_CONVERSATION_IDS] = emptySet()
-            prefs[KEY_ANNOUNCE_SENDER_AND_GROUP] = true
+            prefs[KEY_ANNOUNCE_SENDER] = true
             prefs[KEY_SPEECH_RATE] = AppSettings.DEFAULT_SPEECH_RATE
             prefs[KEY_MIGRATION_COMPLETED] = true // Don't re-migrate after reset
         }
@@ -180,41 +164,41 @@ class DataStoreSettingsRepository(
     }
 
     private fun migrateIfNeeded(prefs: MutablePreferences) {
-        if (prefs[KEY_MIGRATION_COMPLETED] == true) return
+        val oldAnnouncement = prefs[RETIRED_KEY_ANNOUNCE_SENDER_AND_GROUP]
+        if (prefs[KEY_MIGRATION_COMPLETED] != true) {
+            val legacyValues = appContext
+                .getSharedPreferences(OLD_PREFS_FILE_NAME, Context.MODE_PRIVATE)
+                .all
+            prefs[KEY_READER_ENABLED] = legacyValues[OLD_KEY_IS_SERVICE_ACTIVE] as? Boolean ?: false
+            prefs[KEY_READ_PRIVATE_MESSAGES] =
+                legacyValues[OLD_KEY_READ_PRIVATE_MESSAGES] as? Boolean ?: true
+            prefs[KEY_SPEECH_RATE] = decodeLegacySpeechRate(legacyValues[OLD_KEY_SPEECH_RATE])
+            prefs[KEY_RIDING_STATE] = RidingState.INACTIVE.name
+            prefs[KEY_ANNOUNCE_SENDER] = oldAnnouncement ?: true
+            prefs[KEY_MIGRATION_COMPLETED] = true
+        } else if (prefs[KEY_ANNOUNCE_SENDER] == null && oldAnnouncement != null) {
+            prefs[KEY_ANNOUNCE_SENDER] = oldAnnouncement
+        }
 
-        val legacyValues = appContext
-            .getSharedPreferences(OLD_PREFS_FILE_NAME, Context.MODE_PRIVATE)
-            .all
-        prefs[KEY_READER_ENABLED] = legacyValues[OLD_KEY_IS_SERVICE_ACTIVE] as? Boolean ?: false
-        prefs[KEY_READ_PRIVATE_MESSAGES] =
-            legacyValues[OLD_KEY_READ_PRIVATE_MESSAGES] as? Boolean ?: true
-        prefs[KEY_SPEECH_RATE] = decodeLegacySpeechRate(legacyValues[OLD_KEY_SPEECH_RATE])
-
-        // Group and riding preferences are intentionally reset per ADR-001.
-        prefs[KEY_RIDING_STATE] = RidingState.INACTIVE.name
-        prefs[KEY_GROUP_READ_MODE] = GroupReadMode.NO_GROUPS.name
-        prefs[KEY_SELECTED_CONVERSATION_IDS] = emptySet()
-        prefs[KEY_ANNOUNCE_SENDER_AND_GROUP] = true
-        prefs[KEY_MIGRATION_COMPLETED] = true
+        prefs.remove(RETIRED_KEY_GROUP_READ_MODE)
+        prefs.remove(RETIRED_KEY_SELECTED_CONVERSATION_IDS)
+        prefs.remove(RETIRED_KEY_ANNOUNCE_SENDER_AND_GROUP)
+        appContext.getSharedPreferences(OLD_PREFS_FILE_NAME, Context.MODE_PRIVATE).let { legacyPrefs ->
+            if (legacyPrefs.contains(OLD_KEY_SELECTED_GROUPS)) {
+                legacyPrefs.edit().remove(OLD_KEY_SELECTED_GROUPS).commit()
+            }
+        }
     }
 
     private fun decodeSettings(prefs: Preferences): AppSettings {
         val speechRate = prefs[KEY_SPEECH_RATE]
             ?.takeIf { it.isFinite() && it in AppSettings.MIN_SPEECH_RATE..AppSettings.MAX_SPEECH_RATE }
             ?: AppSettings.DEFAULT_SPEECH_RATE
-        val selectedIds = prefs[KEY_SELECTED_CONVERSATION_IDS]
-            .orEmpty()
-            .mapNotNullTo(mutableSetOf()) { value ->
-                value.takeIf(String::isNotBlank)?.let(::ConversationId)
-            }
-
         return AppSettings(
             readerEnabled = prefs[KEY_READER_ENABLED] ?: false,
             ridingState = enumValueOrDefault(prefs[KEY_RIDING_STATE], RidingState.INACTIVE),
             readPrivateMessages = prefs[KEY_READ_PRIVATE_MESSAGES] ?: true,
-            groupReadMode = enumValueOrDefault(prefs[KEY_GROUP_READ_MODE], GroupReadMode.NO_GROUPS),
-            selectedConversationIds = selectedIds,
-            announceSenderAndGroup = prefs[KEY_ANNOUNCE_SENDER_AND_GROUP] ?: true,
+            announceSender = prefs[KEY_ANNOUNCE_SENDER] ?: true,
             speechRate = speechRate,
         )
     }

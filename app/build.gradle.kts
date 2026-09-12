@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
 }
 
 android {
@@ -23,11 +22,13 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig = configuredReleaseSigningOrNull()
         }
     }
 
@@ -40,6 +41,34 @@ android {
         compose = true
         buildConfig = false
     }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+}
+
+fun Project.configuredReleaseSigningOrNull(): com.android.build.api.dsl.ApkSigningConfig? {
+    val signingValues = listOf(
+        providers.gradleProperty("RIDENOTIFY_STORE_FILE").orNull,
+        providers.gradleProperty("RIDENOTIFY_STORE_PASSWORD").orNull,
+        providers.gradleProperty("RIDENOTIFY_KEY_ALIAS").orNull,
+        providers.gradleProperty("RIDENOTIFY_KEY_PASSWORD").orNull,
+    )
+    if (signingValues.all { it == null }) return null
+    require(signingValues.none { it.isNullOrBlank() }) {
+        "Release signing requires all RIDENOTIFY signing properties"
+    }
+    val signingStoreFile = file(requireNotNull(signingValues[0]))
+    require(signingStoreFile.isFile) { "RIDENOTIFY_STORE_FILE does not reference a file" }
+    return extensions.getByType<com.android.build.api.dsl.ApplicationExtension>()
+        .signingConfigs
+        .maybeCreate("release")
+        .apply {
+            storeFile = signingStoreFile
+            this.storePassword = requireNotNull(signingValues[1])
+            this.keyAlias = requireNotNull(signingValues[2])
+            this.keyPassword = requireNotNull(signingValues[3])
+        }
 }
 
 kotlin {
@@ -52,13 +81,12 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core)
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 
@@ -66,5 +94,4 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
-    testImplementation(libs.androidx.room.testing)
 }

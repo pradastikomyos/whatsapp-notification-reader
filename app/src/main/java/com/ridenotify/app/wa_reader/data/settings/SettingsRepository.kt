@@ -36,11 +36,7 @@ interface SettingsRepository {
 
     suspend fun setRidingState(riding: com.ridenotify.app.wa_reader.model.RidingState)
 
-    suspend fun setGroupReadMode(mode: com.ridenotify.app.wa_reader.model.GroupReadMode)
-
-    suspend fun setSelectedConversationIds(ids: Set<com.ridenotify.app.wa_reader.model.ConversationId>)
-
-    suspend fun setAnnounceSenderAndGroup(announce: Boolean)
+    suspend fun setAnnounceSender(announce: Boolean)
 
     /**
      * Perform old SharedPreferences migration if needed on first access.
@@ -50,7 +46,6 @@ interface SettingsRepository {
 
     /**
      * Reset all settings to their defaults.
-     * Group selection is also reset to empty.
      */
     suspend fun resetAllSettings()
 }

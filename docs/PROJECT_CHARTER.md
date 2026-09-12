@@ -24,19 +24,19 @@ NotificationListenerService
 
 ## Product Outcomes
 
-1. Read supported WhatsApp and WhatsApp Business message notifications.
+1. Read supported direct-message WhatsApp and WhatsApp Business notifications.
 2. Let the user enable or disable reading without revoking notification access.
-3. Support private-message and group-message policies.
-4. Discover group conversations only from notifications observed on the device.
-5. Support a clearly defined manual riding mode.
-6. Speak through Android TextToSpeech without changing global media volume.
-7. Expose accurate service, permission, TTS, and policy status in the UI.
-8. Store settings locally and avoid storing message bodies by default.
+3. Reject every classified group message before speech.
+4. Support a clearly defined manual riding mode.
+5. Speak through Android TextToSpeech without changing global media volume.
+6. Expose accurate service, permission, TTS, and policy status in the UI.
+7. Store settings locally and avoid storing message bodies by default.
 
 ## Non-Goals For Version 1
 
 - iOS, desktop, or web support.
 - Reading notifications from every installed application.
+- Reading group conversations.
 - Enumerating WhatsApp groups through an unofficial API.
 - Persisting notification or message history.
 - Automatically detecting whether the user is riding.
@@ -69,13 +69,6 @@ criteria. Placeholder UI must not be shipped.
    deduplication window produce at most one speech request.
 5. Audio focus is abandoned after completion or failure.
 
-### Group selection
-
-1. Observed group conversations appear in the group catalogue.
-2. Discovery never implicitly selects a group.
-3. User chooses `all`, `selected only`, or `none`.
-4. The policy is persisted and applied by the background pipeline.
-
 ## Constraints
 
 - Preserve application ID `com.ridenotify.app.wa_reader` if this is an update to
@@ -99,7 +92,7 @@ Technical metrics for the agreed test corpus and device matrix:
   from recents.
 - No duplicate speech for known notification update scenarios.
 - No system media-volume changes and no synthetic media play/pause events.
-- Reader, private-message, riding, and group policies pass deterministic tests.
+- Reader, direct-message, riding, and unconditional group-rejection policies pass deterministic tests.
 - Queue remains bounded during message bursts.
 - Message bodies are neither persisted nor logged by default.
 - Clean release build, static analysis, unit tests, and instrumented smoke tests pass.

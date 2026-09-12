@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Partially superseded by ADR-013. Queue decisions remain accepted; group-reader
+settings and group speech formatting are retired.
 Owner: Worker Bee (engineering default, pending product owner override)
 Date: 2026-09-11
 
@@ -176,9 +177,15 @@ this table.
    - On audio-focus loss associated with an incoming/active call, or with an
      alarm, the current utterance is stopped and not resumed mid-sentence, but
      the rest of the pending queue is **not** flushed. Once focus is regained,
-     the coordinator resumes by speaking the next queued item (subject to its
-     own age check; an item that expired while focus was lost is dropped
-     instead of spoken late).
+      the coordinator resumes by speaking the next queued item (subject to its
+      own age check; an item that expired while focus was lost is dropped
+      instead of spoken late).
+    - Transient focus retention is bounded to 30 seconds. This conservative
+      window accommodates ordinary navigation prompts and brief call/alarm
+      transitions without allowing a missing gain callback to retain audio
+      focus or the foreground playback gate indefinitely. At expiry, all work
+      accumulated during the interruption is discarded, focus and foreground
+      resources are released, and later newly arriving work can drain normally.
    - If the TTS engine reports no progress callback within 45 seconds of
      starting an utterance, the coordinator treats it as hung, stops waiting
      on it, discards that single utterance, and proceeds to the next queued

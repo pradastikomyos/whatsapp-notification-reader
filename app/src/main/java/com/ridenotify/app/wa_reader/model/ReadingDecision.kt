@@ -5,7 +5,7 @@ sealed interface ReadingDecision {
     data object SkipReaderDisabled : ReadingDecision
     data object SkipRidingModeInactive : ReadingDecision
     data object SkipPrivateDisabled : ReadingDecision
-    data object SkipGroupNotSelected : ReadingDecision
+    data object SkipGroupReadingDisabled : ReadingDecision
     data object SkipRedacted : ReadingDecision
     data object SkipUnsupported : ReadingDecision
     data object SkipTooOld : ReadingDecision

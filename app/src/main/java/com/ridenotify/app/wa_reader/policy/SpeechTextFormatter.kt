@@ -7,21 +7,13 @@ import com.ridenotify.app.wa_reader.model.SpeechRequest
 class SpeechTextFormatter(
     private val sanitizer: MessageSanitizer = MessageSanitizer(),
 ) {
-    fun format(message: ParsedMessage, announceSenderAndGroup: Boolean): String? {
+    fun format(message: ParsedMessage, announceSender: Boolean): String? {
+        if (message.conversationType == ConversationType.GROUP) return null
         val body = sanitizer.sanitize(message.body).takeIf(String::isNotEmpty) ?: return null
-        if (!announceSenderAndGroup) return body.truncateForSpeech()
+        if (!announceSender) return body.truncateForSpeech()
 
         val sender = message.senderDisplayName?.let(sanitizer::sanitize)?.takeIf(String::isNotEmpty)
-        val group = message.conversationTitle?.let(sanitizer::sanitize)?.takeIf(String::isNotEmpty)
-        val introduction = when (message.conversationType) {
-            ConversationType.DIRECT -> sender?.let { "Pesan dari $it." }
-            ConversationType.GROUP -> when {
-                group != null && sender != null -> "Pesan di grup $group dari $sender."
-                group != null -> "Pesan di grup $group."
-                sender != null -> "Pesan dari $sender."
-                else -> null
-            }
-        }
+        val introduction = sender?.let { "Pesan dari $it." }
         val combined = introduction?.let { "$it $body" } ?: body
         val truncated = combined.truncateForSpeech()
         val bodyStart = introduction?.length?.plus(1) ?: 0

@@ -1,5 +1,6 @@
 package com.ridenotify.app.wa_reader
 
+import android.content.ComponentName
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.ridenotify.app.wa_reader.data.notification.NotificationSnapshotExtractor
@@ -12,13 +13,16 @@ class MyNotificationListener : NotificationListenerService() {
     private val handler by lazy { NotificationListenerHandler(container.notificationIngress) }
 
     override fun onListenerConnected() {
-        super.onListenerConnected()
+        container.listenerRebindController.onConnected()
         container.listenerConnectionTracker.connected()
     }
 
     override fun onListenerDisconnected() {
         container.listenerConnectionTracker.disconnected()
-        super.onListenerDisconnected()
+        val component = ComponentName(this, MyNotificationListener::class.java)
+        if (container.listenerRebindController.onDisconnected(component)) {
+            container.listenerConnectionTracker.rebindRequested()
+        }
     }
 
     override fun onNotificationPosted(statusBarNotification: StatusBarNotification?) {

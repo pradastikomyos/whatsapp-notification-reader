@@ -1,5 +1,10 @@
 # Reviewed Native Architecture
 
+Current behavior is governed by `ADR-013`: only structured direct messages can
+reach speech. Group classification remains in snapshots and parsed models, but
+all group messages are rejected. Historical catalogue and three-mode policy
+sections in earlier ADRs are superseded.
+
 ## Review Verdict
 
 The product should be rebuilt as a native Kotlin Android application. Its main
@@ -17,7 +22,6 @@ cost before they provide a measurable benefit.
 - Jetpack Compose for the configuration UI.
 - ViewModel plus StateFlow with unidirectional UI state.
 - DataStore for application settings.
-- Room only for an observed-conversation catalogue, if approved.
 - Native `NotificationListenerService`.
 - Native `TextToSpeech` with `UtteranceProgressListener`.
 - Native `AudioManager` and `AudioFocusRequest`.
@@ -71,10 +75,6 @@ app/src/main/java/com/ridenotify/app/wa_reader/
     settings/
       SettingsRepository.kt
       DataStoreSettingsRepository.kt
-    conversations/
-      ConversationRepository.kt
-      ObservedConversation.kt
-      room/
   riding/
     RidingModeRepository.kt
   platform/
@@ -86,7 +86,6 @@ app/src/main/java/com/ridenotify/app/wa_reader/
     onboarding/
     home/
     settings/
-    groups/
     riding/
 ```
 
@@ -126,7 +125,8 @@ Use conservative ordered parsing:
 
 1. Structured `MessagingStyle` content.
 2. Structured conversation metadata.
-3. Legacy title/text fallback.
+3. Legacy title/text fallback only for strong group evidence; ambiguous legacy
+   content is unsupported and never inferred as direct.
 4. Explicit unsupported, summary, call, security, attachment, or redacted result.
 
 A colon in message text is not evidence of a group. Locale-specific phrase
@@ -149,14 +149,14 @@ accepts the privacy and retention consequences.
 ### Reading policy
 
 The evaluator is pure Kotlin and receives `ParsedMessage`, current settings,
-selected conversations, riding state, and a clock. It returns a reasoned result:
+riding state, and a clock. It returns a reasoned result:
 
 ```text
 Speak
 SkipReaderDisabled
 SkipRidingModeInactive
 SkipPrivateDisabled
-SkipGroupNotSelected
+SkipGroupReadingDisabled
 SkipRedacted
 SkipUnsupported
 SkipTooOld
@@ -166,15 +166,8 @@ Duplicate suppression is a pipeline outcome before policy evaluation, not a
 `ReadingPolicyEvaluator` decision. The ingress pipeline owns duplicate diagnostic
 events and their tests.
 
-Group behavior is explicit:
-
-```text
-ALL_OBSERVED_GROUPS
-SELECTED_GROUPS_ONLY
-NO_GROUPS
-```
-
-An empty selection must never ambiguously mean both all groups and no groups.
+`ConversationType.GROUP` is rejected unconditionally before staleness checks and
+formatting. `SpeechTextFormatter` also rejects group messages defensively.
 
 ### Speech pipeline
 
@@ -214,9 +207,8 @@ During process cold start, ingress must fail closed until the first valid settin
 snapshot is loaded, using a bounded initialization timeout. It must never speak
 using guessed defaults when persisted settings are not yet available.
 
-Group discovery and group selection are separate. Only observed conversations
-may appear automatically. A newly observed group starts unselected when policy is
-`SELECTED_GROUPS_ONLY`.
+The settings UI contains no group policy or observed-conversation route. The
+sender-announcement preference applies only to direct messages.
 
 ## Background And Lifecycle Rules
 
@@ -252,7 +244,7 @@ Do not request privileged or unrelated permissions such as `DEVICE_POWER`,
 
 ## Storage And Privacy
 
-- Persist settings and, if approved, observed conversation identifiers/names.
+- Persist only reader, riding, direct-message, sender-announcement, and speech-rate settings.
 - Do not persist notification content or message history by default.
 - Redact sender and body content from production logs and crash reports.
 - Decide Android backup behavior explicitly.
@@ -271,7 +263,7 @@ Do not request privileged or unrelated permissions such as `DEVICE_POWER`,
 | `NotificationHelper.kt` | riding repository | Remove DND behavior |
 | `WorkaroundService.kt` | none | Do not migrate |
 | `settings_page.dart` | validated settings UI | Rebuild without placeholders |
-| `group_selection_page.dart` | observed-group UI | Remove fabricated groups |
+| `group_selection_page.dart` | none | Remove group-reader UI and persisted catalogue |
 | `riding_mode_page.dart` | manual riding policy UI | Remove fabricated statistics |
 | old manifest | minimal native manifest | Rewrite from scratch |
 | Flutter template test | native test suites | Discard |
@@ -283,7 +275,7 @@ Each decision is recorded as an ADR before dependent implementation starts:
 1. `ADR-001`: preserve or change application ID and signing identity.
 2. `ADR-002`: minimum SDK and supported Android/OEM matrix.
 3. `ADR-003`: parser contract, supported WhatsApp variants/locales, fixtures.
-4. `ADR-004`: conversation identity and observed-group catalogue.
+4. `ADR-004`: historical conversation identity and observed-group catalogue (superseded by ADR-013).
 5. `ADR-005`: speech queue, expiry, aggregation, and interruption policy.
 6. `ADR-006`: API 35+ audio focus and foreground playback service.
 7. `ADR-007`: exact manual riding-mode semantics.
@@ -292,6 +284,7 @@ Each decision is recorded as an ADR before dependent implementation starts:
 10. `ADR-010`: manual dependency container versus Hilt.
 11. `ADR-011`: TTS locale, voice selection, and missing-engine UX.
 12. `ADR-012`: evidence-based battery and OEM guidance.
+13. `ADR-013`: remove group reading and retire its persisted state.
 
 `ADR-001` must also decide whether to preserve the old enabled listener component
 identity `com.ridenotify.app.wa_reader.MyNotificationListener` or require users to

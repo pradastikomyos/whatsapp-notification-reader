@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted for identity and legacy migration; group-policy migration behavior is
+superseded by ADR-013's mandatory retirement cleanup.
 Owner: Worker Bee (engineering default, pending product owner override)
 Date: 2026-09-11
 

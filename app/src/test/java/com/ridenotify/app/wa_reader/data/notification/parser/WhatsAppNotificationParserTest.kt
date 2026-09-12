@@ -152,14 +152,11 @@ class WhatsAppNotificationParserTest {
     }
 
     @Test
-    fun legacyDirectMessageWithColon_remainsDirectAndBodyIsNotSplit() {
-        val result = assertIs<ParsedNotification.Messages>(
+    fun unstructuredLegacyMessageWithTitleAndColon_failsClosed() {
+        val result = assertIs<ParsedNotification.Unsupported>(
             parser.parse(snapshot(title = "Fitri", text = "Alamat: Jalan Melati")),
         )
-        assertEquals(ParseSource.LEGACY_TEXT, result.source)
-        assertEquals(ConversationType.DIRECT, result.items.single().conversationType)
-        assertEquals("Alamat: Jalan Melati", result.items.single().body)
-        assertNull(result.items.single().senderDisplayName)
+        assertEquals(UnsupportedReason.AMBIGUOUS_LEGACY_CONTENT, result.reason)
     }
 
     @Test
@@ -191,11 +188,11 @@ class WhatsAppNotificationParserTest {
     }
 
     @Test
-    fun osGroupKey_neverMakesAChatAGroup() {
-        val result = assertIs<ParsedNotification.Messages>(
+    fun osGroupKey_neverMakesAmbiguousLegacyContentDirectOrGroup() {
+        val result = assertIs<ParsedNotification.Unsupported>(
             parser.parse(snapshot(title = "Sari", text = "Halo", groupKey = "looks-like-a-group")),
         )
-        assertEquals(ConversationType.DIRECT, result.items.single().conversationType)
+        assertEquals(UnsupportedReason.AMBIGUOUS_LEGACY_CONTENT, result.reason)
     }
 
     private fun snapshot(

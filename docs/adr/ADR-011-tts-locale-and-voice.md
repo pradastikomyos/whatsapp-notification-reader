@@ -55,11 +55,11 @@ devices.
   `TextToSpeech.setVoice` with the voice returned by
   `onGetDefaultVoiceNameFor(...)`" (Evidence #5).
 - `AndroidTtsEngine` must call `isLanguageAvailable(Locale("id", "ID"))`
-  (Indonesian) after `OnInitListener.onInit(SUCCESS)`, and additionally
-  inspect `getVoices()` for at least one non-null `Voice` whose `locale`
-  matches Indonesian, before reporting the locale as usable to the rest of
-  the app. Checking only `isLanguageAvailable()` is not sufficient by
-  itself (see the documented gap below).
+  (Indonesian) after `OnInitListener.onInit(SUCCESS)`, inspect `getVoices()`,
+  and explicitly call `setVoice()` with an `id-ID` voice that is installed
+  and has `isNetworkConnectionRequired() == false`. It must fail closed when
+  no such voice exists. Notification content must therefore never be handed
+  to a network-required voice; `setLanguage()` alone is not sufficient.
 
 ### 3. Documented gap: `isLanguageAvailable()` can be a false positive for missing voice data
 
@@ -121,6 +121,8 @@ from the locale/voice query APIs alone.
   responsibilities and the charter's first-run journey.
 - Positive: avoids a documented false-positive failure mode instead of
   discovering it later on a real device.
+- Positive: notification speech has a testable local-voice invariant and does
+  not depend on a TTS provider's network synthesis path.
 - Negative: requires an extra local test-utterance round trip during
   onboarding (acceptable latency cost for correctness).
 - Future revisit trigger: if a later ADR approves additional

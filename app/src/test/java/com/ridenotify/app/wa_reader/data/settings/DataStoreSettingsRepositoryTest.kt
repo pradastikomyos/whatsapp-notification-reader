@@ -10,8 +10,6 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.ridenotify.app.wa_reader.model.AppSettings
-import com.ridenotify.app.wa_reader.model.ConversationId
-import com.ridenotify.app.wa_reader.model.GroupReadMode
 import com.ridenotify.app.wa_reader.model.RidingState
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -82,8 +80,7 @@ class DataStoreSettingsRepositoryTest {
         assertFalse(settings.readPrivateMessages)
         assertEquals(1.35f, settings.speechRate)
         assertEquals(RidingState.INACTIVE, settings.ridingState)
-        assertEquals(GroupReadMode.NO_GROUPS, settings.groupReadMode)
-        assertTrue(settings.selectedConversationIds.isEmpty())
+        assertFalse(legacyPreferences().contains("flutter.selectedGroups"))
     }
 
     @Test
@@ -165,22 +162,9 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
-    fun setGroupReadMode_persistsValue() = runTest {
-        repository.setGroupReadMode(GroupReadMode.SELECTED_GROUPS_ONLY)
-        assertEquals(GroupReadMode.SELECTED_GROUPS_ONLY, repository.getSettings().groupReadMode)
-    }
-
-    @Test
-    fun setSelectedConversationIds_persistsValue() = runTest {
-        val ids = setOf(ConversationId("conv-1"), ConversationId("conv-2"))
-        repository.setSelectedConversationIds(ids)
-        assertEquals(ids, repository.getSettings().selectedConversationIds)
-    }
-
-    @Test
-    fun setAnnounceSenderAndGroup_persistsValue() = runTest {
-        repository.setAnnounceSenderAndGroup(false)
-        assertFalse(repository.getSettings().announceSenderAndGroup)
+    fun setAnnounceSender_persistsValue() = runTest {
+        repository.setAnnounceSender(false)
+        assertFalse(repository.getSettings().announceSender)
     }
 
     @Test
@@ -191,21 +175,38 @@ class DataStoreSettingsRepositoryTest {
     }
 
     @Test
+    fun retirementMigration_runsWhenOldMigrationMarkerIsAlreadyTrue() = runTest {
+        legacyPreferences().edit().putString("flutter.selectedGroups", "retired").commit()
+        dataStore.edit { preferences ->
+            preferences[booleanPreferencesKey("migration_completed")] = true
+            preferences[booleanPreferencesKey("announce_sender_and_group")] = false
+            preferences[stringPreferencesKey("group_read_mode")] = "ALL_OBSERVED_GROUPS"
+            preferences[stringSetPreferencesKey("selected_conversation_ids")] = setOf("retired-id")
+        }
+
+        val settings = repository.getSettings()
+        val storedKeyNames = dataStore.data.first().asMap().keys.map { it.name }.toSet()
+
+        assertFalse(settings.announceSender)
+        assertTrue("announce_sender" in storedKeyNames)
+        assertFalse("announce_sender_and_group" in storedKeyNames)
+        assertFalse("group_read_mode" in storedKeyNames)
+        assertFalse("selected_conversation_ids" in storedKeyNames)
+        assertFalse(legacyPreferences().contains("flutter.selectedGroups"))
+    }
+
+    @Test
     fun corruptPersistedValues_fallBackWithoutTerminatingFlow() = runTest {
         dataStore.edit { preferences ->
             preferences[booleanPreferencesKey("migration_completed")] = true
             preferences[stringPreferencesKey("riding_state")] = "UNKNOWN"
-            preferences[stringPreferencesKey("group_read_mode")] = "UNKNOWN"
             preferences[floatPreferencesKey("speech_rate")] = Float.NaN
-            preferences[stringSetPreferencesKey("selected_conversation_ids")] = setOf("", "valid-id")
         }
 
         val settings = repository.getSettings()
 
         assertEquals(RidingState.INACTIVE, settings.ridingState)
-        assertEquals(GroupReadMode.NO_GROUPS, settings.groupReadMode)
         assertEquals(AppSettings.DEFAULT_SPEECH_RATE, settings.speechRate)
-        assertEquals(setOf(ConversationId("valid-id")), settings.selectedConversationIds)
     }
 
     @Test

@@ -7,7 +7,6 @@ import com.ridenotify.app.wa_reader.listener.SerializedNotificationIngress
 import com.ridenotify.app.wa_reader.model.AppSettings
 import com.ridenotify.app.wa_reader.model.ConversationId
 import com.ridenotify.app.wa_reader.model.ConversationType
-import com.ridenotify.app.wa_reader.model.GroupReadMode
 import com.ridenotify.app.wa_reader.model.MessagingStyleMessageSnapshot
 import com.ridenotify.app.wa_reader.model.MessagingStyleSnapshot
 import com.ridenotify.app.wa_reader.model.NotificationSnapshot
@@ -19,6 +18,7 @@ import com.ridenotify.app.wa_reader.policy.ReadingPolicyEvaluator
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -29,6 +29,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationPipelineTest {
@@ -70,9 +71,9 @@ class NotificationPipelineTest {
     }
 
     @Test
-    fun `end to end group message speaks under ALL_OBSERVED_GROUPS`() = runTest {
+    fun `end to end group message is rejected unconditionally`() = runTest {
         val ingress = SerializedNotificationIngress()
-        val settings = FakeSettingsRepository(activeSettings(groupMode = GroupReadMode.ALL_OBSERVED_GROUPS))
+        val settings = FakeSettingsRepository(activeSettings())
         val pipeline = createPipeline(ingress = ingress, settingsRepository = settings)
 
         val speechItems = mutableListOf<SpeechRequest>()
@@ -90,11 +91,26 @@ class NotificationPipelineTest {
         val snapshot = groupMessagingSnapshot(groupTitle = "Gowes Pagi", sender = "Siti", text = "Kumpul jam 6", postTime = now)
         submit(ingress, snapshot)
 
-        assertEquals(1, speechItems.size)
+        assertEquals(0, speechItems.size)
         assertEquals(1, diagnostics.size)
         val diag = assertIs<PipelineDiagnostic.PolicyEvaluated>(diagnostics.first())
-        assertEquals(DiagnosticOutcome.SPEAK, diag.outcome)
+        assertEquals(DiagnosticOutcome.SKIP_GROUP_READING_DISABLED, diag.outcome)
         assertEquals(ConversationType.GROUP, diag.conversationType)
+    }
+
+    @Test
+    fun `settings cancellation escapes the pipeline`() = runTest {
+        val pipeline = createPipeline(
+            ingress = SerializedNotificationIngress(),
+            settingsRepository = FakeSettingsRepository(
+                initialSettings = activeSettings(),
+                failure = kotlinx.coroutines.CancellationException("settings cancelled"),
+            ),
+        )
+
+        assertFailsWith<kotlinx.coroutines.CancellationException> {
+            pipeline.process(directMessagingSnapshot())
+        }
     }
 
     @Test
@@ -161,9 +177,9 @@ class NotificationPipelineTest {
     }
 
     @Test
-    fun `skipGroupNotSelected emits diagnostic for unselected group or NO_GROUPS mode`() = runTest {
+    fun `groupReadingDisabled emits diagnostic and suppresses speech`() = runTest {
         val ingress = SerializedNotificationIngress()
-        val settings = FakeSettingsRepository(activeSettings(groupMode = GroupReadMode.NO_GROUPS))
+        val settings = FakeSettingsRepository(activeSettings())
         val pipeline = createPipeline(ingress = ingress, settingsRepository = settings)
 
         val speechItems = mutableListOf<SpeechRequest>()
@@ -178,7 +194,7 @@ class NotificationPipelineTest {
         assertEquals(0, speechItems.size)
         assertEquals(1, diagnostics.size)
         val diag = assertIs<PipelineDiagnostic.PolicyEvaluated>(diagnostics.first())
-        assertEquals(DiagnosticOutcome.SKIP_GROUP_NOT_SELECTED, diag.outcome)
+        assertEquals(DiagnosticOutcome.SKIP_GROUP_READING_DISABLED, diag.outcome)
     }
 
     @Test
@@ -457,12 +473,10 @@ class NotificationPipelineTest {
         readerEnabled: Boolean = true,
         ridingState: RidingState = RidingState.ACTIVE,
         readPrivate: Boolean = true,
-        groupMode: GroupReadMode = GroupReadMode.ALL_OBSERVED_GROUPS,
     ) = AppSettings(
         readerEnabled = readerEnabled,
         ridingState = ridingState,
         readPrivateMessages = readPrivate,
-        groupReadMode = groupMode,
     )
 
     private fun directMessagingSnapshot(
@@ -507,7 +521,8 @@ class NotificationPipelineTest {
         sender: String = "Budi",
         text: String = "Siap",
         postTime: Long = now,
-        shortcutId: String = "shortcut-group-1",
+        shortcutId: String? = "shortcut-group-1",
+        priorSenders: List<String> = emptyList(),
     ) = NotificationSnapshot(
         packageName = "com.whatsapp",
         notificationKey = "key-$id",
@@ -528,7 +543,17 @@ class NotificationPipelineTest {
             userDisplayName = "Me",
             conversationTitle = groupTitle,
             isGroupConversation = true,
-            messages = listOf(
+            messages = priorSenders.mapIndexed { index, priorSender ->
+                MessagingStyleMessageSnapshot(
+                    text = "Pesan sebelumnya $index",
+                    timestampMillis = postTime - priorSenders.size + index,
+                    sender = SenderSnapshot(
+                        key = "${priorSender}_key",
+                        name = priorSender,
+                        isBot = false,
+                    ),
+                )
+            } + listOf(
                 MessagingStyleMessageSnapshot(
                     text = text,
                     timestampMillis = postTime,
@@ -567,6 +592,7 @@ class NotificationPipelineTest {
     private class FakeSettingsRepository(
         initialSettings: AppSettings,
         private val delayMillis: Long = 0L,
+        private val failure: Throwable? = null,
     ) : SettingsRepository {
         var current = initialSettings
         private val flow = MutableStateFlow(initialSettings)
@@ -574,6 +600,7 @@ class NotificationPipelineTest {
         override fun observeSettings(): Flow<AppSettings> = flow
 
         override suspend fun getSettings(): AppSettings {
+            failure?.let { throw it }
             if (delayMillis > 0) kotlinx.coroutines.delay(delayMillis)
             return current
         }
@@ -598,18 +625,8 @@ class NotificationPipelineTest {
             flow.value = current
         }
 
-        override suspend fun setGroupReadMode(mode: GroupReadMode) {
-            current = current.copy(groupReadMode = mode)
-            flow.value = current
-        }
-
-        override suspend fun setSelectedConversationIds(ids: Set<ConversationId>) {
-            current = current.copy(selectedConversationIds = ids)
-            flow.value = current
-        }
-
-        override suspend fun setAnnounceSenderAndGroup(announce: Boolean) {
-            current = current.copy(announceSenderAndGroup = announce)
+        override suspend fun setAnnounceSender(announce: Boolean) {
+            current = current.copy(announceSender = announce)
             flow.value = current
         }
 
@@ -620,4 +637,5 @@ class NotificationPipelineTest {
             flow.value = current
         }
     }
+
 }

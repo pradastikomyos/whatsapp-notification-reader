@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by ADR-013 for production behavior. Retained as implementation history.
 Owner: Worker Bee (engineering default, pending product owner override)
 Date: 2026-09-11
 
@@ -103,8 +103,10 @@ Two different underlying conversations can only produce the same
 `conversationKey` on the fallback path (see above); the shortcut path is
 assumed collision-free per WhatsApp's own shortcut uniqueness. When new
 traffic arrives under an existing fallback `conversationKey` whose observed
-`senderKeyOrUnknown` (or, for groups, the most-recent sender-set fingerprint)
-differs from every value previously observed for that key:
+`senderKeyOrUnknown` (or, for groups, structured sender-key set) has no member
+in common with previously observed evidence for that key. A growing sender
+history such as `{Budi}` then `{Budi, Siti}` is not a collision because it
+shares evidence; a fully disjoint sender set is treated as a possible collision:
 
 - Do **not** silently merge the traffic into the existing catalogue row's
   identity, and do not silently overwrite its stored display metadata as if
@@ -138,8 +140,9 @@ picker. Persistence is scoped exactly to the fields below and nothing else:
 | `collisionDetected` | Boolean/counter per section 4 |
 | `collisionEvidenceHash` | SHA-256 hash of collision evidence; never raw sender data |
 
-Collision evidence is persisted only as a one-way SHA-256 hash so conflicting
-traffic remains detectable after process restart without retaining a sender set.
+Each collision-evidence member is persisted only as a one-way SHA-256 hash, so
+overlap can be detected after process restart without retaining a raw sender
+set.
 
 **Never stored**: message text, message timestamps as a history log, sender
 lists beyond the single most-recently-observed display name/key already

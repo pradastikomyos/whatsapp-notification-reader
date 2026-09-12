@@ -13,17 +13,19 @@ class SpeechTextFormatterTest {
     private val formatter = SpeechTextFormatter()
 
     @Test
-    fun `Indonesian announcements cover direct group and missing metadata`() {
+    fun `Indonesian announcements cover direct messages and missing metadata`() {
         val cases = listOf(
             message(ConversationType.DIRECT, "Sari", "Sari") to "Pesan dari Sari. Halo dunia",
-            message(ConversationType.GROUP, "Tim", "Budi") to "Pesan di grup Tim dari Budi. Halo dunia",
-            message(ConversationType.GROUP, "Tim", null) to "Pesan di grup Tim. Halo dunia",
-            message(ConversationType.GROUP, null, "Budi") to "Pesan dari Budi. Halo dunia",
             message(ConversationType.DIRECT, null, null) to "Halo dunia",
         )
 
         cases.forEach { (message, expected) -> assertEquals(expected, formatter.format(message, true)) }
-        assertEquals("Halo dunia", formatter.format(message(ConversationType.GROUP, "Tim", "Budi"), false))
+    }
+
+    @Test
+    fun `group messages are rejected regardless of announcement setting`() {
+        assertNull(formatter.format(message(ConversationType.GROUP, "Tim", "Budi"), true))
+        assertNull(formatter.format(message(ConversationType.GROUP, "Tim", "Budi"), false))
     }
 
     @Test

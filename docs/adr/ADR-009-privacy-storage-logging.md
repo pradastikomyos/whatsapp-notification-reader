@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted except observed-group storage, which is superseded by ADR-013 and removed.
 Owner: Worker Bee (engineering default, pending product owner override)
 Date: 2026-09-11
 

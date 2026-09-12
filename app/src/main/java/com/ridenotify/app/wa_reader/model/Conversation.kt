@@ -12,12 +12,6 @@ enum class ConversationType {
     GROUP,
 }
 
-enum class GroupReadMode {
-    ALL_OBSERVED_GROUPS,
-    SELECTED_GROUPS_ONLY,
-    NO_GROUPS,
-}
-
 enum class RidingState {
     ACTIVE,
     INACTIVE,

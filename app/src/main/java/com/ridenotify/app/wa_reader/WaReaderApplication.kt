@@ -9,6 +9,11 @@ class WaReaderApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        retireObservedConversationsDatabase(this)
         appContainer = AppContainer(this)
+        appContainer.start()
     }
 }
+
+internal fun retireObservedConversationsDatabase(application: Application): Boolean =
+    application.deleteDatabase("observed_conversations.db")

@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 enum class ListenerConnectionState {
     DISCONNECTED,
+    REBIND_REQUESTED,
     CONNECTED,
 }
 
@@ -19,5 +20,9 @@ class ListenerConnectionTracker {
 
     fun disconnected() {
         mutableState.value = ListenerConnectionState.DISCONNECTED
+    }
+
+    fun rebindRequested() {
+        mutableState.value = ListenerConnectionState.REBIND_REQUESTED
     }
 }

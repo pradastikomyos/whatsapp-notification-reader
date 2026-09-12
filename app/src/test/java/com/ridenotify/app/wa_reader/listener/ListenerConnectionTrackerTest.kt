@@ -14,5 +14,14 @@ class ListenerConnectionTrackerTest {
 
         tracker.disconnected()
         assertEquals(ListenerConnectionState.DISCONNECTED, tracker.state.value)
+
+        tracker.rebindRequested()
+        assertEquals(ListenerConnectionState.REBIND_REQUESTED, tracker.state.value)
+
+        tracker.connected()
+        assertEquals(ListenerConnectionState.CONNECTED, tracker.state.value)
+
+        tracker.disconnected()
+        assertEquals(ListenerConnectionState.DISCONNECTED, tracker.state.value)
     }
 }

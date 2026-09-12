@@ -13,8 +13,7 @@ class DomainModelTest {
         assertFalse(settings.readerEnabled)
         assertEquals(RidingState.INACTIVE, settings.ridingState)
         assertTrue(settings.readPrivateMessages)
-        assertEquals(GroupReadMode.NO_GROUPS, settings.groupReadMode)
-        assertTrue(settings.selectedConversationIds.isEmpty())
+        assertTrue(settings.announceSender)
         assertEquals(AppSettings.DEFAULT_SPEECH_RATE, settings.speechRate)
     }
 
